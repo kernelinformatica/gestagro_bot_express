@@ -1,0 +1,63 @@
+const { obtenerSaldo, verificarUsuarioValido } = require('../../services/apiCliente');
+const mensajes = require('../mensajes');
+const { getCleanId, extraerNumero } = require('../utils');
+const axios = require('axios');
+const fs = require('fs');
+const FormData = require('form-data');
+
+module.exports = async (sock, from, nroCuenta = "0") => {
+  try {
+    const jid = from;
+    const numero = extraerNumero(jid);
+   
+    // Verificar si el usuario es válido
+    const validacion = await verificarUsuarioValido(numero);
+    const usuario = validacion['usuario'];
+    const [id, cta] = usuario;
+    const cuenta = cta;
+    const coope = id; 
+    const tipo = "resumen-ctacte-uss"; 
+    if (!validacion || !validacion.usuario) {
+      await sock.sendMessage(from, { text: mensajes.numero_no_asociado });
+      return;
+    }
+
+    // Llamada a la API para generar el PDF con parámetros
+    const pdfResponse = await axios.post('https://dev.kernelinformatica.com.ar/reportes/generarReportePdf', {
+      coope: coope,
+      cuenta: cuenta,
+      tipo: tipo,
+    }, {
+      responseType: 'stream', // Asumimos que devuelve el archivo directamente
+    });
+
+    // Guardar temporalmente el PDF
+    const tempPath = './pdfs/'+cuenta+'-ctacte-dolar-temp.pdf';
+    const writer = fs.createWriteStream(tempPath);
+    pdfResponse.data.pipe(writer);
+
+    writer.on('finish', async () => {
+      // Enviar el archivo como un mensaje adjunto
+      const pdfBuffer = fs.readFileSync(tempPath); // Leer el archivo como buffer
+      await sock.sendMessage(from, {
+        document: pdfBuffer,
+        mimetype: 'application/pdf',
+        fileName: cuenta+'-resumen-de-cuenta-dolar.pdf',
+      });
+
+      await sock.sendMessage(from, { text: mensajes.menu_respuesta_descarga });
+
+      // Eliminar el archivo temporal después de enviarlo
+      fs.unlinkSync(tempPath);
+    });
+
+    writer.on('error', async (error) => {
+      console.error('Error al guardar el PDF:', error);
+      await sock.sendMessage(from, { text: mensajes.error_obtencion_resumen_ctacte });
+    });
+
+  } catch (error) {
+    console.error('Error al generar/enviar el PDF:', error);
+    await sock.sendMessage(from, { text: mensajes.error_obtencion_resumen_ctacte });
+  }
+};

@@ -1,0 +1,26 @@
+Teléfono del Bot Interactivo: 3412178626
+
+Este bot funciona a través de WhatsApp y permite consultar la misma información disponible en la página web de la cooperativa. Actualmente, ofrece las siguientes funcionalidades:
+
+Consulta de saldo de cuenta corriente en pesos y dólares.
+
+Descarga de resumen de cuenta en ambas monedas.
+
+Visualización del resumen de cereales.
+
+Descarga de ficha de cereales y romaneos pendientes.
+
+Acceso al mercado de cereales publicado por la cooperativa.
+
+Cotización del dólar según Banco Nación.
+
+
+🔐 Vinculación entre cuenta y número de celular La asociación entre el número de celular y la cuenta del socio se realiza desde la plataforma web, en la sección “Mi Cuenta”. Esta relación es uno a uno: un número de celular corresponde a una única cuenta de socio (por ejemplo: 34616435556 → 1100302). Aunque esta funcionalidad ya está desarrollada, aún no se encuentra habilitada.
+
+Por motivos de seguridad, no es posible vincular más de un celular por cuenta. El bot no admite múltiples asociaciones.
+
+📲 Funcionamiento del bot Una vez que el usuario envía un mensaje, el bot verifica si el número está registrado como socio. Si lo está, responde con el menú de opciones. En caso contrario, informa que no se encuentra registrado y sugiere contactar a la administración para solicitar acceso.
+
+Una vez asociado, cada vez que el usuario envíe la palabra “menu” o cualquier término no reconocido como comando, el bot responderá con el menú de opciones disponible.
+
+ℹ️ Nota: Esta es la versión 1 del bot, ya funcional y lista para comenzar a utilizarse.
