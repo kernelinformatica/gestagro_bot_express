@@ -2,9 +2,13 @@ const fetch = require('node-fetch');
 const axios = require('axios');
 const cheerio = require('cheerio');
 const userStates = require('../bot/userStates');
-const API_URL = "http://192.168.254.15:6012";
-const URL_BNA = "https://www.bna.com.ar/Cotizador/MonedasHistorico";
-console.log("===============> Url GestagroRest --> "+ `${API_URL} <===============>`);
+const { api, info } = require('../bot/config');
+const API_URL = api.API_URL;
+const URL_BNA = api.URL_BNA;
+//console.log("===============> Url GestagroRest --> "+ `${API_URL} <===============`);
+//console.log("===============> Url Banco Nacion --> "+ `${URL_BNA} <===============`);
+//console.log(`===============> 📞 Soporte: ${info.telefonoSoporte} | 📧 ${info.emailSoporte} <===============`);
+
 const postRequest = async (endpoint, body) => {
   const res = await fetch(`${API_URL}${endpoint}`, {
     method: 'POST',
@@ -60,80 +64,115 @@ const obtenerCotizacionesBna = async (celu, mon, nroCuenta = "0") => {
 
 
 
-const obtenerSaldo = async (celu, mon, nroCuenta ="0") => {
-  
+const obtenerSaldo = async (celu, mon, nroCuenta = "0") => {
+
   const res = await fetch(`${API_URL}/api/chat/saldo`, {
- 
+
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ celular:celu, moneda : mon, cuenta : nroCuenta }),
+    body: JSON.stringify({ celular: celu, moneda: mon, cuenta: nroCuenta }),
   });
- 
+
   return await res.json();
 };
 
-const obtenerEmpresa= async (celu, codigo=0) => {
+const obtenerEmpresa = async (celu, codigo = 0) => {
   const res = await fetch(`${API_URL}/api/chat/get-empresa`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ celular:celu, coope:codigo }),
+    body: JSON.stringify({ celular: celu, coope: codigo }),
   });
   return await res.json();
 };
 
-const obtenerEmpresasAsociadas= async (celu, codigo=0) => {
+const obtenerEmpresasAsociadas = async (celu, codigo = 0) => {
   const res = await fetch(`${API_URL}/api/chat/get-empresas`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ celular:celu, coope:0 }),
+    body: JSON.stringify({ celular: celu, coope: 0 }),
   });
   return await res.json();
 };
 
 
-const obtenerResumenDeCereales= async (celu) => {
+const obtenerResumenDeCereales = async (celu) => {
   const res = await fetch(`${API_URL}/api/chat/resumen-cereales`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ celular:celu }),
+    body: JSON.stringify({ celular: celu }),
   });
   return await res.json();
 };
 
-const obtenerFichaDeCereales= async (celu,  cereal, cosecha, clase = "0") => {
+const obtenerFichaDeCereales = async (celu, cereal, cosecha, clase = "0") => {
   const res = await fetch(`${API_URL}/api/chat/ficha-cereales`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ celular:celu ,  cereal:cereal, clase:clase, cosecha:cosecha }),
+    body: JSON.stringify({ celular: celu, cereal: cereal, clase: clase, cosecha: cosecha }),
   });
   console.log("Respuesta de obtenerFichaDeCereales:", res.status, await res.text()); // Para depurar
   return await res.json();
 };
 
 
-const obtenerMercadoCereales= async (celu, tipo) => {
+
+const obtenerMercadoCereales = async (celu, tipo) => {
   const res = await fetch(`${API_URL}/api/chat/mercado-cereales`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ celular:celu , tipo:tipo}),
+    body: JSON.stringify({ celular: celu, tipo: tipo }),
   });
   return await res.json();
 };
 
 const verificarUsuarioValido = async (celu) => {
-  const res = await fetch(`${API_URL}/api/chat/verificar-usuario`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ celular:celu}),
-  });
+  try {
+    const res = await fetch(`${API_URL}/api/chat/verificar-usuario`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ celular: celu }),
+    });
 
-  return await res.json();
+    return await res.json();
+  } catch (error) {
+    console.error('🛑 Error al obtener los datos de contacto:', error);
+    throw error;
+  }
 };
 
 
+const obtenerDatosDeContacto = async (celu, nroCuenta = "0") => {
+  try {
+    const res = await fetch(`${API_URL}/api/chat/obtener-datos-contacto`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ celular: celu, cuenta: nroCuenta }),
+    });
+
+    console.log("📡 Estado de respuesta:", res.status);
+
+    const contentType = res.headers.get('content-type');
+    let data;
+
+    if (contentType && contentType.includes('application/json')) {
+      data = await res.json();
+    } else {
+      const text = await res.text();
+      console.warn("⚠️ Respuesta no es JSON:", text);
+      throw new Error(`Respuesta inesperada: ${text}`);
+    }
+
+    console.log("📦 JSON recibido:", data);
+    return data;
+
+  } catch (error) {
+    console.error("🛑 Error en obtenerDatosDeContacto:", error.message);
+    throw error;
+  }
+};
 
 
-const verificarUsuarioValidoPorEmpresa = async (celu, sock, from,comandoPendiente) => {
+const verificarUsuarioValidoPorEmpresa = async (celu, sock, from, comandoPendiente) => {
   const res = await fetch(`${API_URL}/api/chat/verificar-usuarios`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -141,19 +180,19 @@ const verificarUsuarioValidoPorEmpresa = async (celu, sock, from,comandoPendient
   });
 
   const data = await res.json(); // Consumir el cuerpo de la respuesta
- 
+
   if (!data.usuarios || data.usuarios.length === 0) {
     await sock.sendMessage(from, { text: '⚠️ No se encontraron empresas asociadas a este número.' });
     return null;
   }
 
-  
-   // Extraer las empresas de los usuarios, incluyendo la cuenta
-   const empresas = data.usuarios.map((usuario) => ({
+
+  // Extraer las empresas de los usuarios, incluyendo la cuenta
+  const empresas = data.usuarios.map((usuario) => ({
     ...usuario.empresa, // Copiar las propiedades de la empresa
     cuenta: usuario.usuario[1], // Agregar la cuenta desde el usuario
   }));
-   
+
   if (empresas.length > 1) {
     // Si hay más de una empresa asociada, enviar un menú de opciones
     let mensaje = '🤖 Su teléfono está registrado en varias empresas. Seleccione una opción:\n\n';
@@ -181,12 +220,15 @@ const verificarUsuarioValidoPorEmpresa = async (celu, sock, from,comandoPendient
 };
 
 
-module.exports = { 
-  obtenerSaldo, 
-  obtenerEmpresa, 
-  obtenerEmpresasAsociadas, 
-  obtenerResumenDeCereales, 
-  obtenerFichaDeCereales, 
-  obtenerMercadoCereales, 
+module.exports = {
+  obtenerSaldo,
+  obtenerEmpresa,
+  obtenerEmpresasAsociadas,
+  obtenerResumenDeCereales,
+  obtenerFichaDeCereales,
+  obtenerMercadoCereales,
   verificarUsuarioValido,
-  verificarUsuarioValidoPorEmpresa };
+  verificarUsuarioValidoPorEmpresa,
+  obtenerCotizacionesBna,
+  obtenerDatosDeContacto
+};

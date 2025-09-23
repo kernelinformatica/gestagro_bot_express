@@ -1,9 +1,11 @@
-const mensajes = require('../mensajes');
+const mensajes = require('../mensajes/default');
 const axios = require('axios');
 const fs = require('fs');
 const { verificarUsuarioValido } = require('../../services/apiCliente');
 const { buscarCodigoCereal } = require('../utils'); // Ruta correcta
 const { getCleanId, extraerNumero } = require('../utils');
+const api = require('../config').api;
+const { config } = require('../config');
 module.exports = async (sock, from, text, userState) => {
   try {
     const jid = from;
@@ -14,8 +16,8 @@ module.exports = async (sock, from, text, userState) => {
     const usuario = validacion['usuario'];
     const [id, cta] = usuario;
     const cuenta = cta;
-    const coope = id; 
-   
+    const coope = parseInt(id, 10); 
+    const imagen = fs.readFileSync(config.clienteRobotImg);
     const partes = text.split(/\s+/); // Dividir el comando en partes
     if (partes.length < 4) {
       console.log('⚠️ Comando incompleto:', partes);
@@ -46,7 +48,7 @@ module.exports = async (sock, from, text, userState) => {
     
     // Llamada a la API
     const pdfResponse = await axios.post(
-      'https://dev.kernelinformatica.com.ar/reportes/generarReportePdf',
+      api.URL_REPORTES_PDF,
       {
         coope,
         cuenta,
@@ -75,7 +77,10 @@ module.exports = async (sock, from, text, userState) => {
         fileName: `ficha-romaneos-`+cereal+"-"+clase+"-"+cosechaRaw+`.pdf`,
       });
 
-      await sock.sendMessage(from, { text: mensajes.menu_respuesta_descarga });
+      await sock.sendMessage(from, { text: mensajes.menu_respuesta_descarga  });
+
+
+     
 
       // Eliminar el archivo temporal después de enviarlo
       fs.unlinkSync(tempPath);

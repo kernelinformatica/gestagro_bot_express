@@ -1,9 +1,11 @@
-//const { nombreEmpresa } = require('./config');
+const obj = require('../config').coope;
+const coope = obj["06"] || obj['default'];
+const info = require('../config').info;
 const mensajes = {
     
-    gestagro : '🤖 *👋 Hola soy el asistente virtual de COOP MARGARITA, te cuento quién soy:*\n\nSoy un sistema pensado y diseñado para el sector agropecuario, más específicamente para Cooperativas Agrícolas y Acopio de Granos.\n\nEscribi *menu* o *ayuda* para conocer los comandos que tengo disponibles.',
-    numero_no_asociado : '🤖 Hola soy el asistente virtual COOP MARGARITA.\n\n\🚫 Su celular no esta asociado a la cooperativa con la que intenta interactuar.\n\nComuniquese con su cooperativa asociada para habilitar su número.\n\nHasta pronto !! 👋' ,
-    menu: 'Soy el asistente virtual de COOP MARGARITA, ¿En qué puedo ayudarte?\n\n1️⃣ Te cuento quién soy\n2️⃣ 💰 Saldo de su cuenta en pesos\n3️⃣ Resumen de cereales. \n4️⃣ Mercado cambiario Banco Nacion.', 
+    gestagro : '🤖 👋 Hola soy el asistente virtual de '+coope.nombreBot+', te cuento quién soy:*\n\nSoy un sistema pensado y diseñado para el sector agropecuario, más específicamente para Cooperativas Agrícolas y Acopio de Granos.\n\nEscribi *menu* o *ayuda* para conocer los comandos que tengo disponibles.',
+    numero_no_asociado : '🤖 *👋 Hola soy el asistente virtual de '+coope.nombreBot+'.\n\n\🚫 Su celular no esta asociado a la cooperativa con la que intenta interactuar.\n\nComuniquese con su cooperativa asociada para habilitar su número.\n\nHasta pronto !! 👋' ,
+    menu: '🤖 👋 Hola soy el asistente virtual de '+coope.nombreBot+'.\n¿En qué puedo ayudarte hoy?\n\n1️⃣ Te cuento quién soy\n2️⃣ 💰 Saldo de su cuenta en pesos\n3️⃣️ 💰 Saldo de su cuenta en dolares  (si es que posee) \n4️⃣ Resumen de cereales. \n5️⃣ *pizarra* Mercado de cereales. \n6️⃣ Mercado cambiario Banco Nacion.', 
     menu_cuenta : '🤖 Menú Cuenta:\n1. *cambiarclave* → Cambiar clave de acceso a plataforma web.\n2. *cambiarmail* → Cambiar email registrado en plataforma web. \n',
     menu_resumen_ctacte_pesos :'🤖 Si desea descargar el resumen en pesos en formato pdf, escribí "resumen" o ingresa el número "10"\n', 
     menu_resumen_ctacte_dolar :'🤖 Si desea descargar el resumen en dólares en formato pdf, escribí "resumendolar" o ingresa el número "11"\n', 
@@ -23,7 +25,7 @@ const mensajes = {
     mensaje_aguarde : "⏳ Aguarde un momento por favor, estoy buscando la información solicitada... 🤖",
     mensaje_volver : `\n\n_Escribí el número o comando correspondiente, o escribí "*menu*" para volver al menú principal._\n`,
     mensaje_error_comando :'❓ No entendí tu mensaje. Escribí *menu* para volver al menú principal.',
-    comando_desconocido :  `🤖 No entiendo tu mensaje: Por favor, intenta con otro comando o escribi *menu* o *ayuda* para ver las opciones disponibles.`,
-    
+    comando_desconocido :  `🤷 No entiendo tu mensaje:\n\nPor favor, intenta con otro comando o escribi *menu* para ver las opciones disponibles.`,
+    noAutorizado : '❌ Su celular no está autorizado para interactuar con este bot, por favor contáctese con su cooperativa asociada para activar su número.\n\n📢 Si su número de celular ya fue asociado por la cooperativa y no le he respondido con el menú de opciones, entonces contáctese con el área de soporte técnico al '+info.telefonoSoporte+', para habiltar su número correctamente.\n\n Hasta pronto !! 👋',
 }
 module.exports = mensajes;

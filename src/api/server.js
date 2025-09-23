@@ -1,8 +1,6 @@
 const express = require('express');
-const dotenv = require('dotenv');
-const { startBot } = require('../bot/index'); // Importa correctamente la función startBot
-
-dotenv.config();
+const { startBot } = require('../bot/index'); 
+const config = require('../bot/config').config;
 const app = express();
 
 app.use(express.json());
@@ -19,7 +17,8 @@ app.get('/start-bot', async (req, res) => {
 });
 
 // Puerto desde .env o default
-const PORT = process.env.PORT || 3001;
+
+const PORT = process.env.PORT || config.puerto; // godoy
 app.listen(PORT, () => {
-  console.log(`📡 API escuchando en http://localhost:${PORT}`);
+  console.log(`📡 API escuchando en http://localhost:${config.puerto}`);
 });

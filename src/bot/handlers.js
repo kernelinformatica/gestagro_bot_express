@@ -1,8 +1,5 @@
 const fetch = require('node-fetch');
 const fs = require('fs');
-const path = require('path');
-const dotenv = require('dotenv');
-dotenv.config();
 
 const obtenerSaldo = async (clienteId) => {
   const res = await fetch(process.env.API_SALDO_URL+'/api/chat/saldo', {

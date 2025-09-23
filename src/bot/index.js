@@ -8,9 +8,10 @@ const { verificarUsuarioValido } = require('../services/apiCliente');
 const { esNumeroWhatsApp } = require('./utils'); // Función para verificar número de WhatsApp
 const { getCleanId } = require('./utils'); // Función para limpiar el ID
 const { extraerNumero } = require('./utils'); // Función para extraer número
+const fs = require('fs'); 
 // Importar comandos
 const info = require('./commands/info');
-const ayuda = require('./commands/ayuda');
+const menu = require('./commands/menu');
 const pesos = require('./commands/ccpesos');
 const pesosresumen = require('./commands/ccpesosresumen');
 const dolar = require('./commands/ccdolar');
@@ -23,14 +24,18 @@ const ficharomaneos = require('./commands/ficharom');
 const cotizaciones = require('./commands/cotizabna');
 const reiniciarempresa = require('./commands/reiniciarempresa');
 const porDefecto = require('./commands/default');
-const mensajes = require('./mensajes');
+const mensajes = require('./mensajes/default');
 const logger = pino({ level: 'debug' });
 const pizarra = require('./commands/pizarra');
+const contacto = require('./commands/contacto');
+const config = require('./config').config ;
 let sockInstance = null;
+let qrActual = null;
 
 async function startBot() {
   const { state, saveCreds } = await useMultiFileAuthState('auth');
   const sock = makeWASocket.default({ auth: state });
+
   sockInstance = sock;
 
   // Guardar credenciales
@@ -38,24 +43,39 @@ async function startBot() {
 
   // Manejo de conexión
   sock.ev.on('connection.update', ({ connection, lastDisconnect, qr }) => {
+
+
     if (qr) {
+      qrActual = qr;
       console.log('🔐 Escaneá este QR para vincular:');
+      const qrcode = require('qrcode-terminal');
       qrcode.generate(qr, { small: true });
     }
 
+
     if (connection === 'close') {
-      const shouldReconnect =
-        lastDisconnect?.error?.isBoom &&
-        lastDisconnect.error.output.statusCode !== DisconnectReason.loggedOut;
-      console.log('Conexión cerrada. ¿Reconectar? →', shouldReconnect);
+      let reasonCode = DisconnectReason.connectionClosed;
+
+      if (lastDisconnect?.error?.output?.statusCode !== undefined) {
+        reasonCode = lastDisconnect.error.output.statusCode;
+      } else if (lastDisconnect?.error?.message?.includes('logged out')) {
+        reasonCode = DisconnectReason.loggedOut;
+      }
+
+      const shouldReconnect = reasonCode !== DisconnectReason.loggedOut;
+
+      console.log(`Conexión cerrada. Código: ${reasonCode}. ¿Reconectar? → ${shouldReconnect}`);
+
       if (shouldReconnect) {
         setTimeout(() => startBot(), 3000);
       }
+
     }
 
     if (connection === 'open') {
       console.log('✅ ¡Conectado con WhatsApp!');
     }
+    const logoBuffer = fs.readFileSync(config.clienteLogo);
   });
 
   // Evitar procesar mensajes duplicados
@@ -64,15 +84,16 @@ async function startBot() {
 
   // Manejo de mensajes
   sock.ev.on('messages.upsert', async ({ messages, type }) => {
+    console.log('📍 Punto de control 1 - Nuevo mensaje recibido');
     try {
       const msg = messages[0];
-      
+
       // Ignorar mensajes del sistema o enviados por el propio bot
-      if (!msg.message ||  msg.key.fromMe || msg.key.remoteJid === 'status@broadcast') {
-        console.log('⚠️ '+msg.key.remoteJid+', Mensaje del sistema o propio, ignorando.');
+      if (!msg.message || msg.key.fromMe || msg.key.remoteJid === 'status@broadcast') {
+        console.log('⚠️ ' + msg.key.remoteJid + ', Mensaje del sistema o propio, ignorando.');
         return;
       }
-      
+
 
 
       const messageID = msg.key.id;
@@ -81,39 +102,98 @@ async function startBot() {
       //console.log('📦 Tipo de mensaje:', Object.keys(msg.message));
       const from = msg.key.remoteJid ?? '';
 
-     
+
       //console.log('📥 Mensaje recibido :', msg);
       const text = normalizeText(msg);
-     
-      //console.log('🧾 Texto normalizado:', text);
+
+      console.log('🧾 Texto normalizado:', text);
 
 
       if (!text) {
         //console.log('⚠️ No se recibió texto válido.');
         return;
       }
-    
-     
 
-      //console.log(`📩 Mensaje recibido de ${from}: ${text}: ${type}`);
+
+
+       console.log(`📩 Mensaje recibido de ${from}: ${text}: ${type}`);
       /// leo datos del usuario
       const jid = from;
       const numero = extraerNumero(jid);
-      console.log('📨 Numero extraido: ', numero )
+      console.log('📨 Numero extraido: ', numero)
       const validacion = await verificarUsuarioValido(numero);
-      console.log('📨 Validacion de usuario: ', validacion )
+      console.log('📨 Validacion de usuario: ', validacion)
+      if (validacion['usuario'] === null || validacion['usuario'] === undefined) {
+        console.log('❌ Usuario no autorizado:', numero);
+        await sock.sendMessage(from, { text: "😢 "+mensajes.noAutorizado });
+        return
+
+      }
       const usuario = validacion['usuario'];
-      const [id, cta, nombre] = usuario;
-      const coope = id;
+      const [id, cta, clave, nombre] = usuario;
+      const coope = parseInt(id, 10); 
+      
+      if (config.apiPropietaria === true){
+       
+        if (config.cliente != coope){
+          console.log ("😢 Cliente no autorizado")
+          await sock.sendMessage(from, {  text: "😢 "+mensajes.noAutorizado });
+          return
+        }
+       
+      }
+      if (!id) {
+        console.log('❌ Usuario no autorizado:', numero);
+        await sock.sendMessage(from, { text: "😢 "+mensajes.noAutorizado });
+        return
+      }
       const cuenta = cta;
       const nombreSocio = nombre
-      console.log('📦 -------------------------> Usuario:',numero+"| Cliente: "+coope+" | "+nombreSocio+" <-----------------------------------");
+      //console.log('📦 -------------------------> Usuario:', numero + "| Cliente: " + coope + " | Nombre Socio: " + nombreSocio + " <-----------------------------------");
      
       const comandosPorCliente = {
-        '03': {
-          ayuda,
-          menu: ayuda,
+        '01': {
+          menu,
+          'menu': menu,
+          '0': menu,
+          'hola': menu,
           info,
+          'info': info,
+          '1': info,
+          pesos,
+          'pesos': pesos,
+          '2': pesos,
+          pesosresumen,
+          'resumen': pesosresumen,
+          '10': pesosresumen,
+          dolar,
+          'dolar': dolar,
+          '3': dolar,
+          'resumendolar': dolarresumen,
+          '11': dolarresumen,
+          cereales: resucer,
+          '4': resucer,
+          f: fichacereal,
+          '55': fichacereal,
+          r: ficharomaneos,
+          '56': ficharomaneos,
+          disponible,
+          '5': disponible,
+          futuro,
+          '6': futuro,
+          cotizaciones,
+          '7': cotizaciones,
+          reiniciarempresa,
+          '99': reiniciarempresa
+        },
+        '03': {
+
+          menu,
+          'menu': menu,
+          '0': menu,
+          'hola': menu,
+          info,
+          'info': info,
           '1': info,
           pesos,
           'pesos': pesos,
@@ -135,9 +215,12 @@ async function startBot() {
           '99': reiniciarempresa
         },
         '05': {
-          ayuda,
-          menu: ayuda,
+          menu,
+          'menu': menu,
+          '0': menu,
+          'hola': menu,
           info,
+          'info': info,
           '1': info,
           pesos,
           'pesos': pesos,
@@ -145,29 +228,24 @@ async function startBot() {
           pesosresumen,
           'resumen': pesosresumen,
           '10': pesosresumen,
-          dolar,
-          'dolar': dolar,
-          '3': dolar,
-          'resumendolar': dolarresumen,
-          '11': dolarresumen,
           cereales: resucer,
-          '4': resucer,
+          '3': resucer,
           f: fichacereal,
           '55': fichacereal,
           r: ficharomaneos,
           '56': ficharomaneos,
           pizarra,
-          '5': pizarra,
-
-          cotizaciones,
-          '6': cotizaciones,
+          '4': pizarra,
           reiniciarempresa,
           '99': reiniciarempresa
         },
         '06': {
-          ayuda,
-          menu: ayuda,
+          menu,
+          'menu': menu,
+          '0': menu,
+          'hola': menu,
           info,
+          'info': info,
           '1': info,
           pesos,
           'pesos': pesos,
@@ -186,11 +264,105 @@ async function startBot() {
           reiniciarempresa,
           '99': reiniciarempresa
         },
-
-
+        '11': {
+          menu,
+          'menu': menu,
+          '0': menu,
+          'hola': menu,
+          pesos,
+          'pesos': pesos,
+          '1': pesos,
+          pesosresumen,
+          'resumen': pesosresumen,
+          '10': pesosresumen,
+          dolar,
+          'dolar': dolar,
+          '2': dolar,
+          'resumendolar': dolarresumen,
+          '11': dolarresumen,
+          cereales: resucer,
+          '3': resucer,
+          f: fichacereal,
+          '55': fichacereal,
+          r: ficharomaneos,
+          '56': ficharomaneos,
+          disponible,
+          '4': disponible,
+          futuro,
+          '5': futuro,
+          cotizaciones,
+          '6': cotizaciones,
+          contacto,
+          '7': contacto,
+          reiniciarempresa,
+          '99': reiniciarempresa
+        },
+        '12': {
+          menu,
+          'menu': menu,
+          '0': menu,
+          'hola': menu,
+          pesos,
+          'pesos': pesos,
+          '1': pesos,
+          pesosresumen,
+          'resumen': pesosresumen,
+          '10': pesosresumen,
+          dolar,
+          'dolar': dolar,
+          '2': dolar,
+          'resumendolar': dolarresumen,
+          '11': dolarresumen,
+          cereales: resucer,
+          '3': resucer,
+          f: fichacereal,
+          '55': fichacereal,
+          r: ficharomaneos,
+          '56': ficharomaneos,
+          disponible,
+          '4': disponible,
+          futuro,
+          '5': futuro,
+          cotizaciones,
+          '6': cotizaciones,
+          contacto,
+          '7': contacto,
+          reiniciarempresa,
+          '99': reiniciarempresa
+        },
+        '29': {
+          menu,
+          'menu': menu,
+          '0': menu,
+          'hola': menu,
+          info,
+          'info': info,
+          '1': info,
+          pesos,
+          'pesos': pesos,
+          '2': pesos,
+          pesosresumen,
+          'resumen': pesosresumen,
+          '10': pesosresumen,
+          dolar,
+          'dolar': dolar,
+          '3': dolar,
+          'resumendolar': dolarresumen,
+          '11': dolarresumen,
+          cereales: resucer,
+          '4': resucer,
+          f: fichacereal,
+          '55': fichacereal,
+          r: ficharomaneos,
+          '56': ficharomaneos,
+          cotizaciones,
+          '5': cotizaciones,
+          reiniciarempresa,
+          '99': reiniciarempresa
+        },
         'default': {
-          ayuda,
-          menu: ayuda,
+          menu,
+          '0': menu,
           info,
           '1': info,
           pesos,
@@ -220,10 +392,15 @@ async function startBot() {
           '99': reiniciarempresa
         }
       };
-      
-      const comandos = comandosPorCliente[coope] || comandosPorCliente['default'];
 
-      
+
+      let cli = ""
+      if (coope < 9){
+        cli = "0"+coope;
+      }
+      const comandos = comandosPorCliente[cli] || comandosPorCliente['default'];
+      console.log('📍 Punto de control 2');
+      console.log('🔍 Comandos disponibles para este usuario:', comandos);
       // Obtener estado del usuario
       const userState = userStates.getState(from) || {};
       console.log('🔍 Estado del usuario:', userState);
@@ -240,12 +417,15 @@ async function startBot() {
         return;
       }
 
+
       // Detectar y ejecutar comando
       const comandoDetectado = detectarComando(text, Object.keys(comandos));
+      console.log('📍 Punto de control 4 ->' + String(comandoDetectado));
       if (comandoDetectado) {
         await comandos[comandoDetectado](sock, from, text, msg);
       } else {
-        await porDefecto(sock, from, text, msg);
+        await sock.sendMessage(getCleanId(from), { text: mensajes.comando_desconocido });
+        //await porDefecto(sock, from, text, msg);
       }
     } catch (error) {
       console.error('🛑 Error procesando mensaje:', error);
@@ -343,7 +523,9 @@ async function handleResumenCereales(sock, from, text, userState) {
   // Si el usuario escribe "menu" o cualquier texto no válido, salir del estado y mostrar el menú principal
   if (text === 'menu' || !['f', 'r'].includes(tipo) || !userState.opcionesFicha[`F${numero}`] && !userState.opcionesRomaneos[`R${numero}`]) {
     userStates.setState(from, { estado: null }); // Limpiar el estado del usuario
-    const mensajeMenu =mensajes.menu+mensaje_volver;
+    
+    const mensajeMenu = mensajes.mensaje_volver;
+
     await sock.sendMessage(getCleanId(from), { text: mensajeMenu });
     return;
   }
@@ -361,7 +543,7 @@ async function handleResumenCereales(sock, from, text, userState) {
     await ficharomaneos(sock, from, comandoCompleto, userState);
   } else {
     // Si el texto no es válido, enviar un mensaje de error
-    await sock.sendMessage(getCleanId(from), { text:mensajes.comando_desconocido });
+    await sock.sendMessage(getCleanId(from), { text: mensajes.comando_desconocido });
   }
 }
 module.exports = { startBot, sockInstance };

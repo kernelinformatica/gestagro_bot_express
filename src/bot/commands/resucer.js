@@ -1,16 +1,18 @@
 const { obtenerResumenDeCereales, verificarUsuarioValido } = require('../../services/apiCliente');
 const { generarIconosNumericos } = require('./../utils');
 const userStates = require('../userStates'); // Importar el manejo de estados
-const mensajes = require("../mensajes");
+const mensajes = require("../mensajes/default");
 const { getCleanId, extraerNumero } = require('../utils');
 const iconosNumericos = generarIconosNumericos(50);
-
+const { config } = require('../config');
+const fs = require('fs'); 
 module.exports = async (sock, from, nroCuenta, text) => {
   console.log(":: Resumen de cereales ::");
   try {
     const jid = from;
     const numero = extraerNumero(jid);
-
+    const imagen = fs.readFileSync(config.clienteRobotImg);
+    console.log("---------------------> imagen: "+ imagen);
     // Verificar si el usuario es válido
     const validacion = await verificarUsuarioValido(numero);
     if (!validacion || !validacion.usuario) {
@@ -81,8 +83,8 @@ module.exports = async (sock, from, nroCuenta, text) => {
     });
 
     mensaje += `*INSTRUCCIONES DE DESCARGA*\n\n` +
-      `📥 Ficha Cereales: escribí: *F+número (ej: F1, F2, etc...)*\n` +
-      `📥 Ficha Romaneos: escribí: *R+número (ej: R1, R2, etc...)*\n` +
+      `📥 Cereales: escribí: *F+número (ej: F1, F2, etc...)*\n` +
+      `📥 Romaneos: escribí: *R+número (ej: R1, R2, etc...)*\n` +
       sep;
     mensaje += "(S.E.U.O.)\n";
     mensaje += nombreEmpresa;
@@ -94,8 +96,13 @@ module.exports = async (sock, from, nroCuenta, text) => {
       opcionesRomaneos,
     });
 
-    // Enviar el mensaje al usuario
-    await sock.sendMessage(from, { text: mensaje });
+
+
+    if (config.mensajesConLogo == "S"){
+      await sock.sendMessage(from, { image: imagen, caption: mensaje  });
+    }  else{
+      await sock.sendMessage(from, { text: mensaje });
+    }
 
   } catch (error) {
     console.error("🛑 Error completo:", error);

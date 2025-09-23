@@ -1,13 +1,14 @@
 const axios = require('axios');
 const cheerio = require('cheerio');
-const mensajes = require('../../bot/mensajes');
+const mensajes = require('../../bot/mensajes/default');
+const { api, config } = require('../config');
 const { formatterPrecios } = require('../utils');
-
+const fs = require('fs'); 
 module.exports = async (sock, from, text, msg) => {
   try {
-    const { data: html } = await axios.get('https://www.bna.com.ar/Cotizador/MonedasHistorico');
+    const { data: html } = await axios.get(api.URL_BNA);
     const $ = cheerio.load(html);
-
+    const imagen = fs.readFileSync(config.clienteRobotImg);
     const cotizaciones = [];
     $('table tbody tr').each((_, row) => {
       const cols = $(row).find('td');
@@ -28,7 +29,14 @@ module.exports = async (sock, from, text, msg) => {
         mensaje += `💱 ${moneda}\nCompra: _${formatterPrecios.format(parseFloat(compra))}_\nVenta: _${formatterPrecios.format(parseFloat(venta))}_\n\n`;
       });
 
-    await sock.sendMessage(from, { text: mensaje });
+    if (config.mensajesConLogo == "S"){
+        await sock.sendMessage(from, { image: imagen, caption: mensaje  });
+    }else{
+        await sock.sendMessage(from, { text: mensaje });
+    }
+
+
+     
   } catch (error) {
     console.error('❌ Error al obtener cotizaciones del BNA:', error.message);
     await sock.sendMessage(from, { text: '⚠️ No se pudo obtener la cotización del Banco Nación en este momento.' });

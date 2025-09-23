@@ -1,1 +1,7 @@
-tail -f /var/log/gestagro_bot.lo
+sudo systemctl start gestagro_bot.service
+sudo systemctl stop gestagro_bot.service
+sudo systemctl status gestagro_bot.service
+sudo systemctl restart gestagro_bot.service
+
+journalctl -u gestagro_bot.service -f
+tail -f /var/log/gestagro_bot.log

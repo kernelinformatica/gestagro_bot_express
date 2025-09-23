@@ -1,10 +1,10 @@
 const { obtenerSaldo, verificarUsuarioValido } = require('../../services/apiCliente');
-const mensajes = require('../mensajes');
+const mensajes = require('../mensajes/default');
 const { getCleanId, extraerNumero } = require('../utils');
 const axios = require('axios');
 const fs = require('fs');
 const FormData = require('form-data');
-
+const api = require('../config').api;
 module.exports = async (sock, from, nroCuenta = "0") => {
   try {
     const jid = from;
@@ -15,7 +15,7 @@ module.exports = async (sock, from, nroCuenta = "0") => {
     const usuario = validacion['usuario'];
     const [id, cta] = usuario;
     const cuenta = cta;
-    const coope = id; 
+    const coope = parseInt(id, 10); 
     const tipo = "resumen-ctacte-uss"; 
     if (!validacion || !validacion.usuario) {
       await sock.sendMessage(from, { text: mensajes.numero_no_asociado });
@@ -23,7 +23,7 @@ module.exports = async (sock, from, nroCuenta = "0") => {
     }
 
     // Llamada a la API para generar el PDF con parámetros
-    const pdfResponse = await axios.post('https://dev.kernelinformatica.com.ar/reportes/generarReportePdf', {
+    const pdfResponse = await axios.post(api.URL_REPORTES_PDF, {
       coope: coope,
       cuenta: cuenta,
       tipo: tipo,

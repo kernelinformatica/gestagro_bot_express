@@ -41,17 +41,7 @@ function esNumeroWhatsApp(remitente) {
 
 function getCleanId(rawId) {
   return  rawId
-  /*if (rawId.includes('@lid')) {
-    console.log('|-------------------> Identificador LID detectado:', rawId);
-    return rawId; // usar tal cual
-  } else if (rawId.includes('@s.whatsapp.net')) {
-    console.log('|-------------------> Identificador WhatsApp detectado:', rawId);
-    return rawId; // usar tal cual
-  } else {
-    // fallback defensivo
-    console.log('-------------------> Otro Identificador detectado:', rawId);
-    return rawId.split(':')[0];
-  }*/
+  
 }
 function extraerNumero(jid) {
   const raw = jid.split('@')[0];

@@ -3,7 +3,7 @@ const path = require('path');
 const { m, verificarUsuarioValido } = require('../../services/apiCliente');
 
 
-const mensajes = require('../../bot/mensajes');
+const mensajes = require('../../bot/mensajes/default');
 const mensajesCoopaz = require('../../bot/mensajes/05');
 const { getCleanId, extraerNumero , descargarImagenRemota} = require('../utils');
 
@@ -17,9 +17,9 @@ module.exports = async (sock, from, nroCuenta) => {
     const usuario = validacion['usuario'];
     const [id, cta] = usuario;
     const cuenta = cta;
-    const coope = id;
+    const coope = parseInt(id, 10);
 
-    if (coope === "05") {
+    if (coope === 5) {
       const imageUrl = 'http://www.maximopazcoop.com.ar/i/pizarra.jpg';
       const imageBuffer = await descargarImagenRemota(imageUrl);
       //const response = await axios.get(imageUrl, { responseType: 'arraybuffer' });
