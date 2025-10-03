@@ -5,17 +5,24 @@ const { getCleanId, extraerNumero } = require('../utils');
 const fs = require('fs');
 const FormData = require('form-data');
 const api = require('../config').api;
+const { config, clientesCodigo } = require('../config');
 module.exports = async (sock, from, nroCuenta = "0") => {
+  await sock.sendMessage(from, { text: "⏳"+mensajes.mensaje_aguarde });
   try {
     const jid = from;
     const numero = extraerNumero(jid);
    
     // Verificar si el usuario es válido
-    const validacion = await verificarUsuarioValido(numero);
-    const usuario = validacion['usuario'];
-    const [id, cta] = usuario;
-    const cuenta = cta;
-    const coope = parseInt(id, 10); 
+    const validacion = await verificarUsuarioValido(numero, config.cliente);
+    if (!validacion || !validacion.usuario) {
+      await sock.sendMessage(from, { text: mensajes.numero_no_asociado });
+      userStates.clearState(from); // Limpiar el estado del usuario
+      return;
+    }
+
+    const usuario = validacion.usuario;
+    const cuenta = usuario.cuenta;
+    const coope = usuario.coope;
     
     const tipo = "resumen-ctacte"; 
     if (!validacion || !validacion.usuario) {

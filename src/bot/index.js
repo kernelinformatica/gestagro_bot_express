@@ -4,11 +4,11 @@ const Boom = require('@hapi/boom');
 const qrcode = require('qrcode-terminal');
 const pino = require('pino');
 const userStates = require('./userStates'); // Manejo de estados de usuario
-const { verificarUsuarioValido } = require('../services/apiCliente');
+const { verificarUsuarioValido, loginRegistrarUsuario, login, loginValidarCuenta, loginEsperarRespuestaUsuario } = require('../services/apiCliente');
 const { esNumeroWhatsApp } = require('./utils'); // Función para verificar número de WhatsApp
 const { getCleanId } = require('./utils'); // Función para limpiar el ID
 const { extraerNumero } = require('./utils'); // Función para extraer número
-const fs = require('fs'); 
+const fs = require('fs');
 // Importar comandos
 const info = require('./commands/info');
 const menu = require('./commands/menu');
@@ -28,7 +28,9 @@ const mensajes = require('./mensajes/default');
 const logger = pino({ level: 'debug' });
 const pizarra = require('./commands/pizarra');
 const contacto = require('./commands/contacto');
-const config = require('./config').config ;
+const subirmercado = require('./commands/uploadFtp');
+const salir =  require('./commands/salir');
+const config = require('./config').config;
 let sockInstance = null;
 let qrActual = null;
 
@@ -106,51 +108,151 @@ async function startBot() {
       //console.log('📥 Mensaje recibido :', msg);
       const text = normalizeText(msg);
 
-      console.log('🧾 Texto normalizado:', text);
+      
+      // console.log(`📩 Mensaje recibido de ${from}: ${text}: ${type}`);
+     
+      const jid = from;
+      const numero = extraerNumero(jid, msg.key.senderPn);
+      const numeroInterno = jid.includes('@lid') ? jid.split('@')[0] : '0';
+      
+      console.log('📨 Numero extraido: ', numero)
+      console.log('📨 Identificador interno:', numeroInterno);
+      if (config.apiPropietaria === true) {
+        cliente = config.cliente
+      } else {
+        cliente = "0"
+      }
+      const validacion = await verificarUsuarioValido(numero, cliente);
+      console.log('Cliente actual: ', cliente); 
+      console.log("------------------------------------------------------------------------------------------------------");
+      console.log('🔍 Validación de usuario:', validacion);
+      console.log("------------------------------------------------------------------------------------------------------");
+     
+      // Registro de USUARIOS
+      if (!validacion["usuario"] || typeof validacion["usuario"] !== "object") {  
+     
+        const userState = userStates.getState(from) || {};
+    
+        // Si el estado del usuario ya está en "esperando cuenta", no enviar el mensaje inicial
+        if (!userState.estado) {
+            console.log('❌ Usuario no autorizado:', numero);
+            await sock.sendMessage(from, { text: "❌ 😢 No estás registrado como asociado.\n\nPor favor, ingresa tu número de cuenta asociada proporcionado por la Cooperativa para poder validar tu usuario." });
+    
+            // Actualizar el estado del usuario a "esperando cuenta"
+            userStates.setState(from, { estado: 'esperando_cuenta' });
+            return;
+        }
+    
+        // Si el estado es "esperando cuenta", procesar la respuesta del usuario
+        if (userState.estado === 'esperando_cuenta') {
+            console.log('⏳ Esperando número de cuenta del usuario...');
+            const cuentaResponse = text.trim(); // Usar el texto ingresado como número de cuenta
+            console.log('📨 Número de cuenta recibido:', cuentaResponse);
+    
+            // Validar el número de cuenta
+            const cuentaValida = await loginValidarCuenta(cuentaResponse);
+            await sock.sendMessage(from, { text: "⏳ Validando datos, aguarde..." });
+    
+            if (!cuentaValida) {
+                await sock.sendMessage(from, { text: "❌ 😢 Número de cuenta inválida. Intenta nuevamente." });
+    
+                // Reiniciar el estado del usuario
+                userStates.setState(from, null);
+                await sock.sendMessage(from, { text: "🔄 Vamos a empezar de nuevo. Por favor, ingresa tu número de cuenta asociada." });
+                return;
+            }
+    
+            // Solicitar la clave del usuario
+            await sock.sendMessage(from, { text: "🔒 Por favor, ingresa tu clave para la cuenta " + cuentaResponse });
+            console.log('⏳ Esperando clave del usuario...');
+    
+            // Actualizar el estado del usuario a "esperando clave"
+            userStates.setState(from, { estado: 'esperando_clave', cuenta: cuentaResponse });
+            return;
+        }
+    
+        // Si el estado es "esperando clave", procesar la clave del usuario
+        if (userState.estado === 'esperando_clave') {
+          await sock.sendMessage(from, { text: "⏳ Validando datos, aguarde..." });
+            console.log('⏳ Esperando clave del usuario...');
+            const claveResponse = text.trim(); // Usar el texto ingresado como clave
+            console.log('📨 Clave recibida:', claveResponse);
+    
+            // Validar la clave del usuario
+            const cuentaResponse = userState.cuenta; // Recuperar la cuenta almacenada en el estado
+            const claveValida = await login(cuentaResponse, claveResponse);
+            console.log('🔑 Login:', claveValida, cliente);
+            if (!claveValida) {
+                await sock.sendMessage(from, { text: "❌ 🔑 Clave inválida. Intenta nuevamente.\n\nSi no recuerda su clave, póngase en contacto con la Cooperativa" });
+    
+                // Reiniciar el estado del usuario
+                userStates.setState(from, null);
+                await sock.sendMessage(from, { text: "🔄 Vamos a empezar de nuevo. Por favor, ingresa tu número de cuenta asociada." });
+                return;
+            }
+    
+            // Registrar el número de teléfono
+            const registroValido = await loginRegistrarUsuario(numero, numeroInterno, cuentaResponse, cliente);
+            console.log('📝 Registro de usuario:', registroValido);
+            if (!registroValido) {
+                await sock.sendMessage(from, { text: "❌ 🤖 Error al registrar el usuario. Intenta nuevamente por favor." });
+    
+                // Reiniciar el estado del usuario
+                userStates.setState(from, null);
+                await sock.sendMessage(from, { text: "🔄 Vamos a empezar de nuevo. Por favor, ingresa tu número de cuenta asociada." });
+                return;
+            }
+    
+            console.log('✅ Usuario registrado exitosamente:', numero);
+            await sock.sendMessage(from, { text: mensajes.felicitaciones_registro });
+    
+            // Limpiar el estado del usuario
+            userStates.setState(from, null);
+            return;
+        }
+      }
+      // Fin de registro de USUARIOS
+     
+      const usuario = validacion["usuario"];
+      const id = usuario["coope"]; 
+      const cta = usuario["cuenta"];
+      const clave = usuario["clave"];
+      const nombre = usuario["nombre"];
+      
+      console.log(`ID: ${id}, Cuenta: ${cta}, Clave: ${clave}, Nombre: ${nombre}`);
 
+        // Si necesitas usar coope como número, conviértelo aquí
+      const coope = parseInt(id, 10);
+        
+      console.log("============================= ACA VALIDO EL USUARIO: "+ cta+ " =========================================")
 
       if (!text) {
         //console.log('⚠️ No se recibió texto válido.');
         return;
       }
+      if (config.apiPropietaria === true) {
 
-
-
-       console.log(`📩 Mensaje recibido de ${from}: ${text}: ${type}`);
-      /// leo datos del usuario
-      const jid = from;
-      const numero = extraerNumero(jid);
-      console.log('📨 Numero extraido: ', numero)
-      const validacion = await verificarUsuarioValido(numero);
-      console.log('📨 Validacion de usuario: ', validacion)
-      if (validacion['usuario'] === null || validacion['usuario'] === undefined) {
-        console.log('❌ Usuario no autorizado:', numero);
-        await sock.sendMessage(from, { text: "😢 "+mensajes.noAutorizado });
-        return
-
-      }
-      const usuario = validacion['usuario'];
-      const [id, cta, clave, nombre] = usuario;
-      const coope = parseInt(id, 10); 
-      
-      if (config.apiPropietaria === true){
-       
-        if (config.cliente != coope){
-          console.log ("😢 Cliente no autorizado")
-          await sock.sendMessage(from, {  text: "😢 "+mensajes.noAutorizado });
+        if (config.cliente != coope) {
+          console.log("😢 Cliente no autorizado")
+          await sock.sendMessage(from, { text: "😢 " + mensajes.noAutorizado });
           return
         }
-       
+        // Detectar si el mensaje contiene una imagen solo para maximo paz
+        if (msg.message.imageMessage || coope === "05") {
+          await subirmercado(sock, from, text, msg, cta); // Llama al comando de subida SFTP
+          return;
+        }
+
       }
       if (!id) {
         console.log('❌ Usuario no autorizado:', numero);
-        await sock.sendMessage(from, { text: "😢 "+mensajes.noAutorizado });
+        await sock.sendMessage(from, { text: "😢 " + mensajes.noAutorizado });
         return
       }
       const cuenta = cta;
       const nombreSocio = nombre
-      //console.log('📦 -------------------------> Usuario:', numero + "| Cliente: " + coope + " | Nombre Socio: " + nombreSocio + " <-----------------------------------");
-     
+      console.log('📦 -------------------------> Usuario:', numero + "| Cliente: " + coope + " | Nombre Socio: " + nombreSocio + " <-----------------------------------");
+
       const comandosPorCliente = {
         '01': {
           menu,
@@ -183,6 +285,10 @@ async function startBot() {
           '6': futuro,
           cotizaciones,
           '7': cotizaciones,
+          salir,
+          '8': salir,
+          'salir': salir,
+
           reiniciarempresa,
           '99': reiniciarempresa
         },
@@ -236,6 +342,12 @@ async function startBot() {
           '56': ficharomaneos,
           pizarra,
           '4': pizarra,
+          cotizaciones,
+          '5': cotizaciones,
+          contacto,
+          '6': contacto,
+          subirmercado,
+          '98': subirmercado,
           reiniciarempresa,
           '99': reiniciarempresa
         },
@@ -278,7 +390,7 @@ async function startBot() {
           dolar,
           'dolar': dolar,
           '2': dolar,
-          'resumendolar': dolarresumen,
+          'dolarresumen': dolarresumen,
           '11': dolarresumen,
           cereales: resucer,
           '3': resucer,
@@ -294,6 +406,9 @@ async function startBot() {
           '6': cotizaciones,
           contacto,
           '7': contacto,
+          salir,
+          '8': salir,
+          'salir': salir,
           reiniciarempresa,
           '99': reiniciarempresa
         },
@@ -357,6 +472,8 @@ async function startBot() {
           '56': ficharomaneos,
           cotizaciones,
           '5': cotizaciones,
+          contacto,
+          '6': contacto,
           reiniciarempresa,
           '99': reiniciarempresa
         },
@@ -395,16 +512,19 @@ async function startBot() {
 
 
       let cli = ""
-      if (coope < 9){
-        cli = "0"+coope;
+      if (coope < 9) {
+        cli = "0" + coope;
+      } else {
+        cli = coope;
       }
+      console.log('📍 Punto de control 1.5');
       const comandos = comandosPorCliente[cli] || comandosPorCliente['default'];
+      console.log("comandos: " + comandosPorCliente[cli])
       console.log('📍 Punto de control 2');
       console.log('🔍 Comandos disponibles para este usuario:', comandos);
       // Obtener estado del usuario
       const userState = userStates.getState(from) || {};
       console.log('🔍 Estado del usuario:', userState);
-
       // Manejo de selección de empresa
       if (userState.estado === 'seleccion_empresa') {
         await handleEmpresaSeleccion(sock, from, text, userState, comandos);
@@ -417,11 +537,24 @@ async function startBot() {
         return;
       }
 
+      // Manejo de comandos en estado "pedido_fondos"
+      if (userState.estado === 'pedido_fondos') {
+        //await handleResumenCereales(sock, from, text, userState);
+        //return;
+      }
+      // Manejo de comandos en estado "pedido_fondos"
+      if (userState.estado === 'reserva_cereales') {
+        //await handleResumenCereales(sock, from, text, userState);
+        //return;
+      }
+
+
 
       // Detectar y ejecutar comando
       const comandoDetectado = detectarComando(text, Object.keys(comandos));
-      console.log('📍 Punto de control 4 ->' + String(comandoDetectado));
+     
       if (comandoDetectado) {
+        console.log('✅ Comando detectado:', "LLEGA ACA ?");
         await comandos[comandoDetectado](sock, from, text, msg);
       } else {
         await sock.sendMessage(getCleanId(from), { text: mensajes.comando_desconocido });
@@ -523,7 +656,7 @@ async function handleResumenCereales(sock, from, text, userState) {
   // Si el usuario escribe "menu" o cualquier texto no válido, salir del estado y mostrar el menú principal
   if (text === 'menu' || !['f', 'r'].includes(tipo) || !userState.opcionesFicha[`F${numero}`] && !userState.opcionesRomaneos[`R${numero}`]) {
     userStates.setState(from, { estado: null }); // Limpiar el estado del usuario
-    
+
     const mensajeMenu = mensajes.mensaje_volver;
 
     await sock.sendMessage(getCleanId(from), { text: mensajeMenu });
@@ -532,13 +665,13 @@ async function handleResumenCereales(sock, from, text, userState) {
 
   // Manejo de fichas de cereales (F) o romaneos (R)
   if (tipo === 'f' && userState.opcionesFicha[`F${numero}`]) {
-    const { cereal, clase, cosecha } = userState.opcionesFicha[`F${numero}`];
-    const comandoCompleto = `F ${cereal} ${clase} ${cosecha}`;
+    const { cereal, clase, cosecha, cereal_codigo } = userState.opcionesFicha[`F${numero}`];
+    const comandoCompleto = `F ${cereal} ${clase} ${cosecha} ${cereal_codigo}`;
     console.log('🔍 Comando completo ficha cereales:', comandoCompleto);
     await fichacereal(sock, from, comandoCompleto, userState);
   } else if (tipo === 'r' && userState.opcionesRomaneos[`R${numero}`]) {
-    const { cereal, clase, cosecha } = userState.opcionesRomaneos[`R${numero}`];
-    const comandoCompleto = `R ${cereal} ${clase} ${cosecha}`;
+    const { cereal, clase, cosecha, cereal_codigo } = userState.opcionesRomaneos[`R${numero}`];
+    const comandoCompleto = `R ${cereal} ${clase} ${cosecha} ${cereal_codigo}`;
     console.log('🔍 Comando completo ficha romaneos:', comandoCompleto);
     await ficharomaneos(sock, from, comandoCompleto, userState);
   } else {

@@ -12,16 +12,23 @@ const {getCleanId} = require('../utils');
 const {extraerNumero} = require('../utils');
 const { config } = require('../config');
 module.exports = async (sock, from, text, msg) => {
-  
+  await sock.sendMessage(from, { text: "⏳"+mensajes.mensaje_aguarde});
   try {
     const jid = from
     const numero = extraerNumero(jid);
     // Verificar si el usuario es válido
-    const validacion = await verificarUsuarioValido(numero);
-    const usuario = validacion['usuario'];
-    const [id, cta, nombre] = usuario;
+    const validacion = await verificarUsuarioValido(numero, config.cliente);
+    if (!validacion || !validacion.usuario) {
+      await sock.sendMessage(from, { text: mensajes.numero_no_asociado });
+      userStates.clearState(from); // Limpiar el estado del usuario
+      return;
+    }
+
+    const usuario = validacion.usuario;
+    const cuenta = usuario.cuenta;
+    const coope = usuario.coope;
     const nombreSocio = usuario[3].split(' ').slice(1).join(' ');
-    const coope = parseInt(id, 10); 
+   
     const cuerpo_1="🤖 HOLA"
     const imagen = fs.readFileSync(config.clienteRobotImg);
     if (!validacion || !validacion.usuario) {

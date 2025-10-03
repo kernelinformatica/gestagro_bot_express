@@ -27,6 +27,6 @@ const mensajes = {
     mensaje_error_comando :'❓ No entendí tu mensaje. Escribí *menu* para volver al menú principal.',
     comando_desconocido :  `🤖 No entiendo tu mensaje: Por favor, intenta con otro comando o escribi *menu* o *ayuda* para ver las opciones disponibles.`,
     noAutorizado : '❌ Su celular no está autorizado para interactuar con este bot, por favor contáctese con su cooperativa asociada para activar su número.\n\n📢 Si su número de celular ya fue asociado por la cooperativa y no le he respondido con el menú de opciones, entonces contáctese con el área de soporte técnico al '+info.telefonoSoporte+', para habiltar su número correctamente.\n\n Hasta pronto !! 👋',
-
+    felicitaciones_registro : '🎉Felicitaciones !!! \n\n👍 El registro fue exitoso. Ahora puedes usar el bot.\n\n🤖 Ecribí *menu* para conocer los comandos que tengo disponibles.',
 }
 module.exports = mensajes;

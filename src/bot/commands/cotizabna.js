@@ -5,6 +5,7 @@ const { api, config } = require('../config');
 const { formatterPrecios } = require('../utils');
 const fs = require('fs'); 
 module.exports = async (sock, from, text, msg) => {
+  await sock.sendMessage(from, { text: "⏳"+mensajes.mensaje_aguarde});
   try {
     const { data: html } = await axios.get(api.URL_BNA);
     const $ = cheerio.load(html);

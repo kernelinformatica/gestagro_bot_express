@@ -5,15 +5,25 @@ const { getCleanId, extraerNumero } = require('../utils');
 const { config } = require('../config');
 const fs = require('fs');
 module.exports = async (sock, from, nroCuenta= "0") => {
+
+  await sock.sendMessage(from, { text: "⏳"+mensajes.mensaje_aguarde });
   try {
     const jid = from
     const numero = extraerNumero(jid);
-    const cuenta = "0"
-    
+    console.log('Ejecutando comando contacto para el cliente:', numero, config.cliente);
     // Verificar si el usuario es válido
-    const validacion = await verificarUsuarioValido(numero);
+    const validacion = await verificarUsuarioValido(numero, config.cliente);
+    if (!validacion || !validacion.usuario) {
+      await sock.sendMessage(from, { text: mensajes.numero_no_asociado });
+      userStates.clearState(from); // Limpiar el estado del usuario
+      return;
+    }
+
+    const usuario = validacion.usuario;
+    const cuenta = usuario.cuenta;
+    const coope = usuario.coope;
     const imagen = fs.readFileSync(config.clienteRobotImg);
-   
+    
     if (!validacion || !validacion.usuario) {
       await sock.sendMessage(from, { text: mensajes.numero_no_asociado });
       return;
@@ -44,7 +54,7 @@ module.exports = async (sock, from, nroCuenta= "0") => {
    
   } catch(error) {
     console.error('🛑 Error en comando contacto:', error);
-    await sock.sendMessage(from, { text: mensajes.error_comando });
+    await sock.sendMessage(from, { text: mensajes.error_general });
   }
 };
 

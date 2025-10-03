@@ -65,28 +65,48 @@ function getCleanId(rawId) {
   //console.log('|-------------------> Identificador desconocido, se devuelve tal cual:', rawId);
   return rawId;
 }
-
-function extraerNumero(jid) {
-  const raw = jid.split('@')[0];
-  const dominio = jid.split('@')[1];
- 
-  // Solo aplicar limpieza si el JID es de tipo s.whatsapp.net
-  if (dominio === 's.whatsapp.net') {
-    if (raw.startsWith('549')) {
-   
-      return raw.slice(3);
-    }
-    if (raw.startsWith('54')) {
-      
-      return raw.slice(2);
-    }
+function extraerNumero(jid, senderPn) {
+  if (!jid || typeof jid !== 'string') {
+    console.warn('⚠️ JID inválido recibido:', jid);
+    return '';
   }
 
-  // En otros casos (como @lid), devolver el número completo
- 
+  // Si senderPn está disponible, usarlo como prioridad
+  if (senderPn && typeof senderPn === 'string') {
+    const senderRaw = senderPn.split('@')[0];
+    console.log('📨 Número extraído desde senderPn:', senderRaw);
+    return limpiarPrefijo(senderRaw); // Limpiar el prefijo y devolver el número
+  }
+
+  const raw = jid.split('@')[0];
+  const dominio = jid.split('@')[1];
+
+  // Si el JID es de tipo s.whatsapp.net, limpiar el número
+  if (dominio === 's.whatsapp.net') {
+    return limpiarPrefijo(raw); // Limpiar el prefijo y devolver el número
+  }
+
+  // Si el JID es de tipo lid, devolver el identificador interno como fallback
+  if (dominio === 'lid') {
+    console.log('📍 Identificador interno detectado (@lid):', jid);
+    return raw; // Fallback al identificador interno
+  }
+
+  // Fallback para otros casos
+  console.warn('⚠️ Dominio desconocido en JID:', dominio);
   return raw;
 }
 
+// Función auxiliar para limpiar el prefijo 549 o 54
+function limpiarPrefijo(numero) {
+  if (numero.startsWith('549')) {
+    return numero.slice(3); // Eliminar el prefijo 549
+  }
+  if (numero.startsWith('54')) {
+    return numero.slice(2); // Eliminar el prefijo 54
+  }
+  return numero; // Devolver el número tal cual si no tiene prefijo
+}
 async function descargarImagenRemota(imageUrl) {
   if (!imageUrl || typeof imageUrl !== 'string') {
     throw new Error('URL no válida o indefinida');

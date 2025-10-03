@@ -6,6 +6,7 @@ const { config } = require('../config');
 const fs = require('fs'); 
 
 module.exports = async (sock, from, nroCuenta = "0") => {
+  await sock.sendMessage(from, { text: "⏳"+mensajes.mensaje_aguarde });
   try {
     const jid = from;
     const numero = extraerNumero(jid);

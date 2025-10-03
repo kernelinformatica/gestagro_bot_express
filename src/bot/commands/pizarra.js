@@ -1,8 +1,7 @@
 const axios = require('axios');
 const path = require('path');
 const { m, verificarUsuarioValido } = require('../../services/apiCliente');
-
-
+const { config, clientesCodigo } = require('../config');
 const mensajes = require('../../bot/mensajes/default');
 const mensajesCoopaz = require('../../bot/mensajes/05');
 const { getCleanId, extraerNumero , descargarImagenRemota} = require('../utils');
@@ -10,15 +9,28 @@ const { getCleanId, extraerNumero , descargarImagenRemota} = require('../utils')
 
 
 module.exports = async (sock, from, nroCuenta) => {
+  await sock.sendMessage(from, { text: "⏳"+mensajes.mensaje_aguarde});
   try {
     const jid = from;
     const numero = extraerNumero(jid);
-    const validacion = await verificarUsuarioValido(numero);
-    const usuario = validacion['usuario'];
-    const [id, cta] = usuario;
-    const cuenta = cta;
-    const coope = parseInt(id, 10);
+    const validacion = await verificarUsuarioValido(numero, config.cliente);
+    if (!validacion || !validacion.usuario) {
+      await sock.sendMessage(from, { text: mensajes.numero_no_asociado });
+      userStates.clearState(from); // Limpiar el estado del usuario
+      return;
+    }
 
+    const usuario = validacion.usuario;
+    const cuenta = usuario.cuenta;
+    const coope = usuario.coope;
+
+
+
+
+
+
+
+    
     if (coope === 5) {
       const imageUrl = 'http://www.maximopazcoop.com.ar/i/pizarra.jpg';
       const imageBuffer = await descargarImagenRemota(imageUrl);

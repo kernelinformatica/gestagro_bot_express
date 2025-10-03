@@ -6,15 +6,17 @@ const { getCleanId, extraerNumero } = require('../utils');
 const iconosNumericos = generarIconosNumericos(50);
 const { config } = require('../config');
 const fs = require('fs'); 
+
 module.exports = async (sock, from, nroCuenta, text) => {
   console.log(":: Resumen de cereales ::");
+  await sock.sendMessage(from, { text: "⏳" + mensajes.mensaje_aguarde });
   try {
     const jid = from;
     const numero = extraerNumero(jid);
     const imagen = fs.readFileSync(config.clienteRobotImg);
-    console.log("---------------------> imagen: "+ imagen);
+
     // Verificar si el usuario es válido
-    const validacion = await verificarUsuarioValido(numero);
+    const validacion = await verificarUsuarioValido(numero, config.cliente);
     if (!validacion || !validacion.usuario) {
       await sock.sendMessage(from, { text: mensajes.numero_no_asociado });
       userStates.clearState(from); // Limpiar el estado del usuario
@@ -29,8 +31,15 @@ module.exports = async (sock, from, nroCuenta, text) => {
 
     // Validar y convertir el mensaje de la API
     if (typeof resu.message === 'string') {
-      const jsonString = resu.message.replace(/'/g, '"');
-      resumenObj = JSON.parse(jsonString);
+      try {
+        const jsonString = resu.message.replace(/'/g, '"'); // Reemplazar comillas simples por dobles
+        resumenObj = JSON.parse(jsonString);
+      } catch (error) {
+        console.error("🛑 Error al convertir el mensaje de la API a JSON:", error);
+        await sock.sendMessage(from, { text: mensajes.error_solicitud });
+        userStates.clearState(from); // Limpiar el estado del usuario
+        return;
+      }
     } else {
       resumenObj = resu.message; // Ya era objeto
     }
@@ -53,33 +62,39 @@ module.exports = async (sock, from, nroCuenta, text) => {
 
     resumenObj.resumen.forEach((item, index) => {
       console.log(`Procesando registro ${index + 1}:`, item);
-      if (!item.cereal_codigo || !item.clase_codigo || !item.cosecha) {
+
+      // Validar que los campos necesarios existan
+      if (!item.cereal || !item.clase_codigo || !item.cosecha) {
         console.warn(`⚠️ Registro inválido en índice ${index}:`, item);
         return;
       }
 
       const claseFormateada = parseInt(item.clase_codigo, 10);
+      const cerealCodigo = parseInt(item.cereal_codigo, 10);
       const cosechaFormateada = item.cosecha.replace('/', '');
       const cerealCorto = item.cereal.substring(0, 10);
       const numeroClave = `${index + 1}`;
       const numeroIcono = iconosNumericos[index] || `*${numeroClave}.*`;
 
       opcionesFicha[`F${numeroClave}`] = {
-        cereal: item.cereal_codigo,
+        cereal: item.cereal,
+        cereal_codigo : cerealCodigo,
         clase: claseFormateada,
         cosecha: cosechaFormateada,
       };
 
       opcionesRomaneos[`R${numeroClave}`] = {
-        cereal: item.cereal_codigo,
+        cereal: item.cereal,
+        cereal_codigo : cerealCodigo,
         clase: claseFormateada,
         cosecha: cosechaFormateada,
       };
 
       mensaje +=
         `${numeroIcono} ${cerealCorto} (${item.cosecha})\n` +
-        `✔️ ${item.clase}\n` +
-        `✔️ ${item.saldo.toLocaleString()} Kg\n\n`;
+        `✔️ Cereal Cod: ${item.cereal_codigo}\n` +
+        `✔️ Clase: ${item.clase}\n` +
+        `✔️ Saldo: ${item.saldo.toLocaleString()} Kg\n\n`;
     });
 
     mensaje += `*INSTRUCCIONES DE DESCARGA*\n\n` +
@@ -96,11 +111,10 @@ module.exports = async (sock, from, nroCuenta, text) => {
       opcionesRomaneos,
     });
 
-
-
-    if (config.mensajesConLogo == "S"){
-      await sock.sendMessage(from, { image: imagen, caption: mensaje  });
-    }  else{
+    if (config.mensajesConLogo == "S") {
+      console.log("Enviando mensaje con robot -> ", mensaje);
+      await sock.sendMessage(from, { image: imagen, caption: mensaje });
+    } else {
       await sock.sendMessage(from, { text: mensaje });
     }
 

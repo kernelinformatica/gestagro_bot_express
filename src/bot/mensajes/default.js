@@ -18,14 +18,15 @@ const mensajes = {
     error_comando_proceso : '😢 Error al procesar el comando solicitado:',
     error_obtencion_saldos : '😢 No se pudo obtener el saldo requerido en este momento, inténte nuevamente más tarde.\n\nEscribi *ayuda* para conocer los comandos que tengo disponibles.', 
     error_obtencion_resumen_ctacte : '😢 No se pudo obtener el resumen completo de su cuenta en pesos.\nEscribi *ayuda* para conocer los comandos que tengo disponibles.', 
-    error_obtencion_ficha_cereales : '😢 No se pudo obtener su ficha de cereal. Parámetros insuficientes o la búsqueda no arrojó ningún resultado, inténte nuevamente !!\n\n🤖 Escribi *menu* para volver al menú principal o 4️⃣ para volver al resumen de cereales.', 
-    error_obtencion_ficha_romaneos : '😢 No se pudo obtener su ficha de romaneos. Parámetros insuficientes o la búsqueda no arrojó ningún resultado, inténte nuevamente !!\n\n🤖 Escribi *menu* para volver al menú principal o 4️⃣ para volver al resumen de cereales.', 
+    error_obtencion_ficha_cereales : '😢 No se pudo obtener su ficha de cereal. Parámetros insuficientes o la búsqueda no arrojó ningún resultado, inténte nuevamente !!\n\n🤖 Escribi *menu* para volver al menú principal.', 
+    error_obtencion_ficha_romaneos : '😢 No se pudo obtener su ficha de romaneos. Parámetros insuficientes o la búsqueda no arrojó ningún resultado, inténte nuevamente !!\n\n🤖 Escribi *menu* para volver al menú principal.', 
     error_obtener_cotizaciones : '😢 No se pudo obtener las cotizaciones del BNA. Inténtelo nuevamente más tarde.',
     error_general: '😢 Ocurrió un error inesperado, por favor intente nuevamente más tarde.',
-    mensaje_aguarde : "⏳ Aguarde un momento por favor, estoy buscando la información solicitada... 🤖",
+    mensaje_aguarde : "Procesando...",
     mensaje_volver : '🤖 Ecribí *menu* para volver al menu principal.',
     mensaje_error_comando :'❓ No entendí tu mensaje. Escribí *menu* para volver al menú principal.',
     comando_desconocido :  `🤷 No entiendo tu mensaje:\n\nPor favor, intenta con otro comando o escribi *menu* para ver las opciones disponibles.`,
     noAutorizado : '❌ Su celular no está autorizado para interactuar con este bot, por favor contáctese con su cooperativa asociada para activar su número.\n\n📢 Si su número de celular ya fue asociado por la cooperativa y no le he respondido con el menú de opciones, entonces contáctese con el área de soporte técnico al '+info.telefonoSoporte+', para habiltar su número correctamente.\n\n Hasta pronto !! 👋',
+    felicitaciones_registro : '🎉Felicitaciones !!! \n👍 El registro fue exitoso. _Ahora puedes usar el BOT._\n\n🤖 Ecribí "*menu*" o "*0*" para conocer los comandos que tengo disponibles.',
 }
 module.exports = mensajes;

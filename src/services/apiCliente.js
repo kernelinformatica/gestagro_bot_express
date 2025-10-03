@@ -7,7 +7,7 @@ const API_URL = api.API_URL;
 const URL_BNA = api.URL_BNA;
 //console.log("===============> Url GestagroRest --> "+ `${API_URL} <===============`);
 //console.log("===============> Url Banco Nacion --> "+ `${URL_BNA} <===============`);
-//console.log(`===============> 📞 Soporte: ${info.telefonoSoporte} | 📧 ${info.emailSoporte} <===============`);
+console.log(`===============> 📞 Soporte: ${info.telefonoSoporte} | 📧 ${info.emailSoporte} <===============`);
 
 const postRequest = async (endpoint, body) => {
   const res = await fetch(`${API_URL}${endpoint}`, {
@@ -17,9 +17,6 @@ const postRequest = async (endpoint, body) => {
   });
   return await res.json();
 };
-
-
-
 
 const obtenerCotizacionesBna = async (celu, mon, nroCuenta = "0") => {
   try {
@@ -62,9 +59,7 @@ const obtenerCotizacionesBna = async (celu, mon, nroCuenta = "0") => {
   }
 };
 
-
-
-const obtenerSaldo = async (celu, mon, nroCuenta = "0") => {
+const obtenerSaldo = async (celu, mon,nroCuenta) => {
 
   const res = await fetch(`${API_URL}/api/chat/saldo`, {
 
@@ -72,7 +67,7 @@ const obtenerSaldo = async (celu, mon, nroCuenta = "0") => {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ celular: celu, moneda: mon, cuenta: nroCuenta }),
   });
-
+  
   return await res.json();
 };
 
@@ -94,7 +89,6 @@ const obtenerEmpresasAsociadas = async (celu, codigo = 0) => {
   return await res.json();
 };
 
-
 const obtenerResumenDeCereales = async (celu) => {
   const res = await fetch(`${API_URL}/api/chat/resumen-cereales`, {
     method: 'POST',
@@ -115,7 +109,6 @@ const obtenerFichaDeCereales = async (celu, cereal, cosecha, clase = "0") => {
 };
 
 
-
 const obtenerMercadoCereales = async (celu, tipo) => {
   const res = await fetch(`${API_URL}/api/chat/mercado-cereales`, {
     method: 'POST',
@@ -125,20 +118,36 @@ const obtenerMercadoCereales = async (celu, tipo) => {
   return await res.json();
 };
 
-const verificarUsuarioValido = async (celu) => {
+const verificarUsuarioValido = async (celu, coope = "0") => {
   try {
+    console.log(":::: Verificando usuario con coope:", celu, coope);
     const res = await fetch(`${API_URL}/api/chat/verificar-usuario`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ celular: celu }),
+      body: JSON.stringify({ celular: celu, coope: coope }),
     });
 
-    return await res.json();
+    //console.log("📡 Estado de respuesta:", res.status);
+
+    const data = await res.json();
+    //console.log("📦 Respuesta de la API:", data);
+    
+     if (!data || !data.usuario) {
+      console.warn("⚠️ La respuesta de la API no contiene el campo 'usuario'. Encapsulando datos...");
+     
+    }
+    
+    return data; // Devuelve solo el objeto 'usuario'
   } catch (error) {
-    console.error('🛑 Error al obtener los datos de contacto:', error);
+    console.error('🛑 Error al verificar usuario:', error.message);
     throw error;
   }
 };
+
+
+
+
+
 
 
 const obtenerDatosDeContacto = async (celu, nroCuenta = "0") => {
@@ -170,7 +179,6 @@ const obtenerDatosDeContacto = async (celu, nroCuenta = "0") => {
     throw error;
   }
 };
-
 
 const verificarUsuarioValidoPorEmpresa = async (celu, sock, from, comandoPendiente) => {
   const res = await fetch(`${API_URL}/api/chat/verificar-usuarios`, {
@@ -219,6 +227,124 @@ const verificarUsuarioValidoPorEmpresa = async (celu, sock, from, comandoPendien
   return empresas[0];
 };
 
+async function loginEsperarRespuestaUsuario(sock, from) {
+  return new Promise((resolve, reject) => {
+    const timeout = setTimeout(() => {
+      sock.ev.off('messages.upsert', listener);
+      reject(new Error('Tiempo de espera agotado para la respuesta del usuario.'));
+    }, 60000); // 60 segundos de espera
+
+    const listener = async ({ messages }) => {
+      const msg = messages[0];
+      if (msg.key.remoteJid === from && msg.message?.conversation) {
+        clearTimeout(timeout);
+        sock.ev.off('messages.upsert', listener); // Desactivar el listener
+        resolve(msg.message.conversation.trim());
+      }
+    };
+
+    sock.ev.on('messages.upsert', listener);
+  });
+}
+
+
+const loginDesconectar = async (celu, cuenta= "0") => {
+  try {
+    console.log(":::: Desonectando usuario:", celu, cuenta);
+    
+    const res = await fetch(`${API_URL}/api/auth/desvincular-usuario`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ celular: celu, cuenta: cuenta }),
+    });
+
+    //console.log("📡 Estado de respuesta:", res.status);
+
+    const data = await res.json();
+    return data.message;
+    console.log("📦 Respuesta de la API SALIR:", data);
+    
+     
+    
+    return data; // Devuelve solo el objeto 'usuario'
+  } catch (error) {
+    console.error('🛑 Error al verificar usuario:', error.message);
+    throw error;
+  }
+};
+
+
+
+
+
+
+async function loginValidarCuenta(cuenta) {
+  try {
+    const res = await fetch(`${API_URL}/api/auth/validar-cuenta`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ cuenta }),
+    });
+    const data = await res.json();
+    
+    if (data.code = "OK" && data.status === 200){ 
+      return true
+    }else{  
+      return false 
+    }
+
+  
+  } catch (error) {
+    console.error('Error al valida la cuenta: '+cuenta, error);
+    return false;
+  }
+}
+
+async function login(cuenta, clave) {
+  console.log("Intentando login con cuenta:", cuenta, clave);  
+  try {
+    const res = await fetch(`${API_URL}/api/auth/login-bot`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ cuenta, clave }),
+    });
+    const data = await res.json();
+    if (data.code === 'OK' && data.status === 200) {
+      return true;
+  } else {
+      return false;
+  }
+    return data; 
+  } catch (error) {
+    console.error('Error al validar el usuario: '+cuenta, error);
+    return false;
+  }
+}
+
+
+async function loginRegistrarUsuario(numero, numeroInterno, cuenta, coope) {
+  console.log("Registrando usuario con número:", numero, "numero interno: ", numeroInterno,", cuenta:", cuenta, "y coope: ", coope);
+  if (numero.length > 10 && numeroInterno > 10){
+    numero = 0
+  }
+
+  try {
+    numero_interno = numeroInterno
+    const res = await fetch(`${API_URL}/api/auth/registrar-usuario`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ numero, numero_interno, cuenta, coope }),
+    });
+    const data = await res.json();
+    console.log('Usuario registrado:', data);
+    return data;
+  } catch (error) {
+    console.error('Error al registrar el usuario:', error);
+    throw error;
+  }
+}
+
+
 
 module.exports = {
   obtenerSaldo,
@@ -230,5 +356,10 @@ module.exports = {
   verificarUsuarioValido,
   verificarUsuarioValidoPorEmpresa,
   obtenerCotizacionesBna,
-  obtenerDatosDeContacto
+  obtenerDatosDeContacto,
+  loginValidarCuenta,
+  login,
+  loginRegistrarUsuario,
+  loginEsperarRespuestaUsuario,
+  loginDesconectar
 };

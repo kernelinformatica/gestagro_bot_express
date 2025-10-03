@@ -4,16 +4,21 @@ const { getCleanId, extraerNumero } = require('../utils');
 const { config } = require('../config');
 const fs = require('fs'); 
 module.exports = async (sock, from, nroCuenta) => {
+  await sock.sendMessage(from, { text: "⏳"+mensajes.mensaje_aguarde});
   try {
     const jid = from
     const numero = extraerNumero(jid);
     const mercado = 'futuro'
     const imagen = fs.readFileSync(config.clienteRobotImg);
-    const validacion = await verificarUsuarioValido(numero);
     if (!validacion || !validacion.usuario) {
-        await sock.sendMessage(from, { text: mensajes.numero_no_asociado });
-        return;
-      }
+      await sock.sendMessage(from, { text: mensajes.numero_no_asociado });
+      userStates.clearState(from); // Limpiar el estado del usuario
+      return;
+    }
+
+    const usuario = validacion.usuario;
+    const cuenta = usuario.cuenta;
+    const coope = usuario.coope;
     const futuro = await obtenerMercadoCereales( numero, mercado);
 
 

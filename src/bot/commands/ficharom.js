@@ -6,17 +6,44 @@ const { buscarCodigoCereal } = require('../utils'); // Ruta correcta
 const { getCleanId, extraerNumero } = require('../utils');
 const api = require('../config').api;
 const { config } = require('../config');
+function normalizarCoope(coope) {
+  const tipo = typeof coope;
+  const limpio = String(coope).trim().padStart(2, "0");
+  console.log(`>>> Coope recibido (${tipo}):`, coope);
+  console.log(">>> Coope normalizado:", limpio);
+  return limpio;
+}
+
+function obtenerCosecha(coope, cosechaRaw) {
+  const coopesSinBarra = ["01", "09", "12", "15", "17", "20", "23", "29"];
+  const coopeNorm = normalizarCoope(coope);
+  const cosecha = coopesSinBarra.includes(coopeNorm)
+    ? `${cosechaRaw}`
+    : `${cosechaRaw.slice(0, 2)}/${cosechaRaw.slice(2)}`;
+  console.log("::: Cosecha final:", cosecha);
+  return cosecha;
+}
+
+
 module.exports = async (sock, from, text, userState) => {
+  await sock.sendMessage(from, { text: "⏳"+mensajes.mensaje_aguarde});
   try {
     const jid = from;
     const numero = extraerNumero(jid);
     console.log('📥 Entrando a ficha romaneos pendientes');
     console.log('📦 Parámetros recibidos:', { from, text, userState });
-    const validacion = await verificarUsuarioValido(numero);
-    const usuario = validacion['usuario'];
-    const [id, cta] = usuario;
-    const cuenta = cta;
-    const coope = parseInt(id, 10); 
+    const validacion = await verificarUsuarioValido(numero, config.cliente);
+    if (!validacion || !validacion.usuario) {
+      await sock.sendMessage(from, { text: mensajes.numero_no_asociado });
+      userStates.clearState(from); // Limpiar el estado del usuario
+      return;
+    }
+
+    const usuario = validacion.usuario;
+    const cuenta = usuario.cuenta;
+    const coope = usuario.coope;
+
+  
     const imagen = fs.readFileSync(config.clienteRobotImg);
     const partes = text.split(/\s+/); // Dividir el comando en partes
     if (partes.length < 4) {
@@ -27,13 +54,16 @@ module.exports = async (sock, from, text, userState) => {
       return;
     }
 
-    const cereal = partes[1];
+    const cereal = partes[4];
     const clase = partes[2]; // Tercer elemento es la clase
     const cosechaRaw = partes[3]; // Cuarto elemento es la cosecha
-    const coopesConCosechaSinBarra = ["01", "09", "12", "15", "17", "20", "23", "29"];
-    cosecha = coopesConCosechaSinBarra.includes(coope)
-    ? `${cosechaRaw}`
-    : `${cosechaRaw.slice(0, 2)}/${cosechaRaw.slice(2)}`;
+    console.log('✅ Cereal:', { cereal });
+    const coopesSinBarra = ["01", "09", "12", "15", "17", "20", "23", "29"];
+    const coopeNorm = normalizarCoope(coope);
+    const cosecha = coopesSinBarra.includes(coopeNorm)
+      ? `${cosechaRaw}`
+      : `${cosechaRaw.slice(0, 2)}/${cosechaRaw.slice(2)}`;
+    console.log("::: Cosecha final:", cosecha);
     console.log('✅ Parámetros extraídos:', { cereal, clase, cosecha });
 
     // Tipo fijo

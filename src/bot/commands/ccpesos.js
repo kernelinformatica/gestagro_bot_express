@@ -6,18 +6,20 @@ const { getCleanId, extraerNumero } = require('../utils');
 const { config } = require('../config');
 module.exports = async (sock, from, nroCuenta= "0") => {
   try {
+    await sock.sendMessage(from, { text: "⏳"+mensajes.mensaje_aguarde });
     const jid = from
     const numero = extraerNumero(jid);
     const cuenta = "0"
     const logo = fs.readFileSync(config.clienteLogo);
     const imagen = fs.readFileSync(config.clienteRobotImg);
     // Verificar si el usuario es válido
-    const validacion = await verificarUsuarioValido(numero);
-    console.log("Validacion usuario en ccpesos:", validacion);
+    const validacion = await verificarUsuarioValido(numero, config.cliente);
+    
     if (!validacion || !validacion.usuario) {
       await sock.sendMessage(from, { text: mensajes.numero_no_asociado });
       return;
     }
+   
     const saldo = await obtenerSaldo( numero, "PES", cuenta);
 
 

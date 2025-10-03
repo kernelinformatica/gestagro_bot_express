@@ -1,0 +1,25 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+      {
+        "args": [
+          "--extensionDevelopmentPath=${workspaceFolder}"
+        ],
+        "name": "Launch Extension",
+        "outFiles": [
+          "${workspaceFolder}/out/**/*.js"
+        ],
+        "preLaunchTask": "npm",
+        "request": "launch",
+        "type": "extensionHost"
+      },
+      
+      {
+        "type": "node",
+        "request": "launch",
+        "name": "Debug Bot",
+        "program": "${workspaceFolder}/src/services/apiCliente.js",
+        "skipFiles": ["<node_internals>/**"]
+      }
+    ]
+  }
