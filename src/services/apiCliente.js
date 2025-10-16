@@ -1,15 +1,15 @@
-const fetch = require('node-fetch');
-const axios = require('axios');
-const cheerio = require('cheerio');
-const userStates = require('../bot/userStates');
-const { api, info } = require('../bot/config');
+import fetch from 'node-fetch';
+import axios from 'axios';
+import * as cheerio from 'cheerio';
+import userStates from '../bot/userStates.js';
+import { api, info } from '../bot/config.js';
 const API_URL = api.API_URL;
 const URL_BNA = api.URL_BNA;
-//console.log("===============> Url GestagroRest --> "+ `${API_URL} <===============`);
-//console.log("===============> Url Banco Nacion --> "+ `${URL_BNA} <===============`);
+console.log("===============> Url GestagroRest --> "+ `${API_URL} <===============`);
+console.log("===============> Url Banco Nacion --> "+ `${URL_BNA} <===============`);
 console.log(`===============> 📞 Soporte: ${info.telefonoSoporte} | 📧 ${info.emailSoporte} <===============`);
 
-const postRequest = async (endpoint, body) => {
+export const postRequest = async (endpoint, body) => {
   const res = await fetch(`${API_URL}${endpoint}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -18,7 +18,7 @@ const postRequest = async (endpoint, body) => {
   return await res.json();
 };
 
-const obtenerCotizacionesBna = async (celu, mon, nroCuenta = "0") => {
+export const obtenerCotizacionesBna = async (celu, mon, nroCuenta = "0") => {
   try {
     const url = URL_BNA;
     const { data: html } = await axios.get(url, {
@@ -59,7 +59,7 @@ const obtenerCotizacionesBna = async (celu, mon, nroCuenta = "0") => {
   }
 };
 
-const obtenerSaldo = async (celu, mon,nroCuenta) => {
+export const obtenerSaldo = async (celu, mon,nroCuenta) => {
 
   const res = await fetch(`${API_URL}/api/chat/saldo`, {
 
@@ -89,7 +89,7 @@ const obtenerEmpresasAsociadas = async (celu, codigo = 0) => {
   return await res.json();
 };
 
-const obtenerResumenDeCereales = async (celu) => {
+export const obtenerResumenDeCereales = async (celu) => {
   const res = await fetch(`${API_URL}/api/chat/resumen-cereales`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -98,18 +98,18 @@ const obtenerResumenDeCereales = async (celu) => {
   return await res.json();
 };
 
-const obtenerFichaDeCereales = async (celu, cereal, cosecha, clase = "0") => {
+export const obtenerFichaDeCereales = async (celu, cereal, cosecha, clase = "0") => {
   const res = await fetch(`${API_URL}/api/chat/ficha-cereales`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ celular: celu, cereal: cereal, clase: clase, cosecha: cosecha }),
   });
-  console.log("Respuesta de obtenerFichaDeCereales:", res.status, await res.text()); // Para depurar
+  //console.log("Respuesta de obtenerFichaDeCereales:", res.status, await res.text()); // Para depurar
   return await res.json();
 };
 
 
-const obtenerMercadoCereales = async (celu, tipo) => {
+export const obtenerMercadoCereales = async (celu, tipo) => {
   const res = await fetch(`${API_URL}/api/chat/mercado-cereales`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -118,7 +118,7 @@ const obtenerMercadoCereales = async (celu, tipo) => {
   return await res.json();
 };
 
-const verificarUsuarioValido = async (celu, coope = "0") => {
+export const verificarUsuarioValido = async (celu, coope = "0") => {
   try {
     console.log(":::: Verificando usuario con coope:", celu, coope);
     const res = await fetch(`${API_URL}/api/chat/verificar-usuario`, {
@@ -126,15 +126,12 @@ const verificarUsuarioValido = async (celu, coope = "0") => {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ celular: celu, coope: coope }),
     });
-
-    //console.log("📡 Estado de respuesta:", res.status);
-
     const data = await res.json();
+    //console.log("📡 Estado de respuesta:", res.status);
     //console.log("📦 Respuesta de la API:", data);
-    
-     if (!data || !data.usuario) {
-      console.warn("⚠️ La respuesta de la API no contiene el campo 'usuario'. Encapsulando datos...");
-     
+    if (data.code !== 'OK' || data.status !== 200) {
+      console.warn('⚠️ verificarUsuarioValido(): Usuario no válido o error en la API:', data);
+      
     }
     
     return data; // Devuelve solo el objeto 'usuario'
@@ -150,7 +147,7 @@ const verificarUsuarioValido = async (celu, coope = "0") => {
 
 
 
-const obtenerDatosDeContacto = async (celu, nroCuenta = "0") => {
+export const obtenerDatosDeContacto = async (celu, nroCuenta = "0") => {
   try {
     const res = await fetch(`${API_URL}/api/chat/obtener-datos-contacto`, {
       method: 'POST',
@@ -180,7 +177,7 @@ const obtenerDatosDeContacto = async (celu, nroCuenta = "0") => {
   }
 };
 
-const verificarUsuarioValidoPorEmpresa = async (celu, sock, from, comandoPendiente) => {
+export const verificarUsuarioValidoPorEmpresa = async (celu, sock, from, comandoPendiente) => {
   const res = await fetch(`${API_URL}/api/chat/verificar-usuarios`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -227,7 +224,7 @@ const verificarUsuarioValidoPorEmpresa = async (celu, sock, from, comandoPendien
   return empresas[0];
 };
 
-async function loginEsperarRespuestaUsuario(sock, from) {
+export async function loginEsperarRespuestaUsuario(sock, from) {
   return new Promise((resolve, reject) => {
     const timeout = setTimeout(() => {
       sock.ev.off('messages.upsert', listener);
@@ -248,7 +245,7 @@ async function loginEsperarRespuestaUsuario(sock, from) {
 }
 
 
-const loginDesconectar = async (celu, cuenta= "0") => {
+export const loginDesconectar = async (celu, cuenta= "0") => {
   try {
     console.log(":::: Desonectando usuario:", celu, cuenta);
     
@@ -262,7 +259,7 @@ const loginDesconectar = async (celu, cuenta= "0") => {
 
     const data = await res.json();
     return data.message;
-    console.log("📦 Respuesta de la API SALIR:", data);
+    //console.log("📦 Respuesta de la API SALIR:", data);
     
      
     
@@ -278,7 +275,7 @@ const loginDesconectar = async (celu, cuenta= "0") => {
 
 
 
-async function loginValidarCuenta(cuenta) {
+export async function loginValidarCuenta(cuenta) {
   try {
     const res = await fetch(`${API_URL}/api/auth/validar-cuenta`, {
       method: 'POST',
@@ -300,7 +297,8 @@ async function loginValidarCuenta(cuenta) {
   }
 }
 
-async function login(cuenta, clave) {
+
+export  async function login(cuenta, clave) {
   console.log("Intentando login con cuenta:", cuenta, clave);  
   try {
     const res = await fetch(`${API_URL}/api/auth/login-bot`, {
@@ -322,31 +320,34 @@ async function login(cuenta, clave) {
 }
 
 
-async function loginRegistrarUsuario(numero, numeroInterno, cuenta, coope) {
+export async function loginRegistrarUsuario(numero, numeroInterno, cuenta, coope) {
   console.log("Registrando usuario con número:", numero, "numero interno: ", numeroInterno,", cuenta:", cuenta, "y coope: ", coope);
   if (numero.length > 10 && numeroInterno > 10){
     numero = 0
+    
   }
 
   try {
-    numero_interno = numeroInterno
+   
+    
     const res = await fetch(`${API_URL}/api/auth/registrar-usuario`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ numero, numero_interno, cuenta, coope }),
+      body: JSON.stringify({ numero, numeroInterno , cuenta, coope }),
     });
+   
     const data = await res.json();
-    console.log('Usuario registrado:', data);
+    
     return data;
   } catch (error) {
-    console.error('Error al registrar el usuario:', error);
+    console.error('Error al registrar el usuario:', );
     throw error;
   }
 }
 
 
 
-module.exports = {
+export default  {
   obtenerSaldo,
   obtenerEmpresa,
   obtenerEmpresasAsociadas,
@@ -361,5 +362,5 @@ module.exports = {
   login,
   loginRegistrarUsuario,
   loginEsperarRespuestaUsuario,
-  loginDesconectar
+  loginDesconectar,
 };

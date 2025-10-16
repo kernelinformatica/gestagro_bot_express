@@ -1,10 +1,29 @@
-const { m, obtenerMercadoCereales, verificarUsuarioValido } = require('../../services/apiCliente');
-const mensajes = require('../../bot/mensajes/default');
-const { getCleanId, extraerNumero } = require('../utils');
-const { config } = require('../config');
-const fs = require('fs'); 
-module.exports = async (sock, from, nroCuenta) => {
-  await sock.sendMessage(from, { text: "⏳"+mensajes.mensaje_aguarde});
+import { config, clientesCodigo } from '../config.js';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import { extraerNumero } from '../utils.js';
+import apiCliente from '../../services/apiCliente.js';
+const { verificarUsuarioValido, obtenerMercadoCereales } = apiCliente;
+import mensajesDefault from '../mensajes/default.js';
+
+async function cargarMensajesCliente(coopeId) {
+  const codigo = clientesCodigo[coopeId];
+  if (!codigo) return mensajesDefault;
+  const ruta = path.join(
+    path.dirname(fileURLToPath(import.meta.url)),
+    '..',
+    'mensajes',
+    `${codigo}.js`
+  );
+ 
+  return fs.existsSync(ruta) ? (await import(ruta)).default : mensajesDefault;
+}
+
+
+export default async (sock, from, nroCuenta) => {
+  const mensajesCliente = await cargarMensajesCliente(parseInt(config.cliente, 10));
+    await sock.sendMessage(from, { text: `⏳ ${mensajesCliente.mensaje_aguarde}` });
   try {
     const jid = from
     const numero = extraerNumero(jid);
@@ -13,7 +32,7 @@ module.exports = async (sock, from, nroCuenta) => {
     // Verificar si el usuario es válido
     const validacion = await verificarUsuarioValido(numero, config.cliente);
     if (!validacion || !validacion.usuario) {
-      await sock.sendMessage(from, { text: mensajes.numero_no_asociado });
+      await sock.sendMessage(from, { text: mensajesCliente.numero_no_asociado });
       userStates.clearState(from); // Limpiar el estado del usuario
       return;
     }
@@ -32,6 +51,6 @@ module.exports = async (sock, from, nroCuenta) => {
     
 
   } catch (error) {
-    await sock.sendMessage(from, { text: mensajes.mercado_cereales_disponible_sin_datos +" "+ error.message });
+    await sock.sendMessage(from, { text: mensajesCliente.mercado_cereales_disponible_sin_datos +" "+ error.message });
   }
 };

@@ -1,34 +1,52 @@
-const { obtenerSaldo, verificarUsuarioValido } = require('../../services/apiCliente');
-const mensajes = require('../mensajes/default');
-const { getCleanId, extraerNumero } = require('../utils');
-const axios = require('axios');
-const fs = require('fs');
-const FormData = require('form-data');
-const { config } = require('dotenv');
-const api = require('../config').api;
-module.exports = async (sock, from, nroCuenta = "0") => {
-  await sock.sendMessage(from, { text: "⏳"+mensajes.mensaje_aguarde });
-  try {
-    const jid = from;
-    const numero = extraerNumero(jid);
-   
-    // Verificar si el usuario es válido
-    const validacion = await verificarUsuarioValido(numero, config.cliente);
-    if (!validacion || !validacion.usuario) {
-      await sock.sendMessage(from, { text: mensajes.numero_no_asociado });
-      userStates.clearState(from); // Limpiar el estado del usuario
-      return;
-    }
+import { config, clientesCodigo, api } from '../config.js';
+import fs from 'fs';
+import path from 'path';
+import axios from 'axios';
+import { fileURLToPath } from 'url';
+import { extraerNumero } from '../utils.js';
+import apiCliente from '../../services/apiCliente.js';
+const { verificarUsuarioValido } = apiCliente;
+import mensajesDefault from '../mensajes/default.js';
 
+
+
+async function cargarMensajesCliente(coopeId) {
+  const codigo = clientesCodigo[coopeId];
+  if (!codigo) return mensajesDefault;
+  const ruta = path.join(
+    path.dirname(fileURLToPath(import.meta.url)),
+    '..',
+    'mensajes',
+    `${codigo}.js`
+  );
+ 
+  return fs.existsSync(ruta) ? (await import(ruta)).default : mensajesDefault;
+}
+
+export default  async (sock, from, nroCuenta = "0") => {
+
+  const mensajesCliente = await cargarMensajesCliente(parseInt(config.cliente, 10));
+  await sock.sendMessage(from, { text: `⏳ ${mensajesCliente.mensaje_aguarde}` });
+
+  try {
+    const jid = from
+    const numero = extraerNumero(jid);
+    const logo = fs.readFileSync(config.clienteLogo);
+    const imagen = fs.readFileSync(config.clienteRobotImg);
+    const validacion = await verificarUsuarioValido(numero, config.cliente);
+    
+    
     const usuario = validacion.usuario;
     const cuenta = usuario.cuenta;
     const coope = usuario.coope;
     const tipo = "resumen-ctacte-uss"; 
+    
     if (!validacion || !validacion.usuario) {
-      await sock.sendMessage(from, { text: mensajes.numero_no_asociado });
+      await sock.sendMessage(from, { text: mensajesCliente.numero_no_asociado });
+      userStates.clearState(from); // Limpiar el estado del usuario
       return;
-    }
-
+      }
+    console.log(':: Generando resumen de cuenta en dólares :: '+api.URL_REPORTES_PDF);  
     // Llamada a la API para generar el PDF con parámetros
     const pdfResponse = await axios.post(api.URL_REPORTES_PDF, {
       coope: coope,
@@ -52,7 +70,15 @@ module.exports = async (sock, from, nroCuenta = "0") => {
         fileName: cuenta+'-resumen-de-cuenta-dolar.pdf',
       });
 
-      await sock.sendMessage(from, { text: mensajes.menu_respuesta_descarga });
+
+      if (config.mensajesConLogo == "S"){
+        await sock.sendMessage(from, { text: mensajesCliente.menu_respuesta_descarga });
+        //await sock.sendMessage(from, { image: imagen, document,caption: mensajesCliente.menu_respuesta_descarga  });
+      }  else{
+        await sock.sendMessage(from, { text: mensajesCliente.menu_respuesta_descarga });
+      }
+
+     
 
       // Eliminar el archivo temporal después de enviarlo
       fs.unlinkSync(tempPath);

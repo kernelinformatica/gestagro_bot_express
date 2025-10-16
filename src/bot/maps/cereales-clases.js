@@ -192,4 +192,7 @@ const clasesPorCodigo = {
     283: 'BIO 5.92',
     284: 'ACA 5785 GRST'
  }
- module.exports = clasesPorCodigo;
+ export default {
+    clasesPorCodigo,
+   
+  };

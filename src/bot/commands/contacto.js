@@ -1,12 +1,30 @@
-const { verificarUsuarioValido, obtenerDatosDeContacto } = require('../../services/apiCliente');
-const mensajes = require('../../bot/mensajes/default')
-const userStates = require('../userStates'); 
-const { getCleanId, extraerNumero } = require('../utils');
-const { config } = require('../config');
-const fs = require('fs');
-module.exports = async (sock, from, nroCuenta= "0") => {
+import { config, clientesCodigo } from '../config.js';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import { extraerNumero } from '../utils.js';
+import apiCliente from '../../services/apiCliente.js';
+const { verificarUsuarioValido, obtenerDatosDeContacto } = apiCliente;
+import mensajesDefault from '../mensajes/default.js';
 
-  await sock.sendMessage(from, { text: "⏳"+mensajes.mensaje_aguarde });
+async function cargarMensajesCliente(coopeId) {
+  const codigo = clientesCodigo[coopeId];
+  if (!codigo) return mensajesDefault;
+  const ruta = path.join(
+    path.dirname(fileURLToPath(import.meta.url)),
+    '..',
+    'mensajes',
+    `${codigo}.js`
+  );
+ 
+  return fs.existsSync(ruta) ? (await import(ruta)).default : mensajesDefault;
+}
+
+
+export default  async (sock, from, nroCuenta= "0") => {
+
+    const mensajesCliente = await cargarMensajesCliente(parseInt(config.cliente, 10));
+    await sock.sendMessage(from, { text: `⏳ ${mensajesCliente.mensaje_aguarde}` });
   try {
     const jid = from
     const numero = extraerNumero(jid);
@@ -14,7 +32,7 @@ module.exports = async (sock, from, nroCuenta= "0") => {
     // Verificar si el usuario es válido
     const validacion = await verificarUsuarioValido(numero, config.cliente);
     if (!validacion || !validacion.usuario) {
-      await sock.sendMessage(from, { text: mensajes.numero_no_asociado });
+      await sock.sendMessage(from, { text: mensajesCliente.numero_no_asociado });
       userStates.clearState(from); // Limpiar el estado del usuario
       return;
     }
@@ -25,7 +43,7 @@ module.exports = async (sock, from, nroCuenta= "0") => {
     const imagen = fs.readFileSync(config.clienteRobotImg);
     
     if (!validacion || !validacion.usuario) {
-      await sock.sendMessage(from, { text: mensajes.numero_no_asociado });
+      await sock.sendMessage(from, { text: mensajesCliente.numero_no_asociado });
       return;
     } 
  
@@ -54,7 +72,7 @@ module.exports = async (sock, from, nroCuenta= "0") => {
    
   } catch(error) {
     console.error('🛑 Error en comando contacto:', error);
-    await sock.sendMessage(from, { text: mensajes.error_general });
+    await sock.sendMessage(from, { text: mensajesCliente.error_general });
   }
 };
 

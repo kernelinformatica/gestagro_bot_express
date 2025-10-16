@@ -1,12 +1,26 @@
-const mensajes = require('../mensajes/default');
-const axios = require('axios');
-const fs = require('fs');
-const { getCleanId, extraerNumero } = require('../utils');
-const { verificarUsuarioValido } = require('../../services/apiCliente');
-const { buscarCodigoCereal } = require('../utils'); // Ruta correcta
-const api = require('../config').api;
-const { config } = require('../config');
-const { Console } = require('console');
+import { config, clientesCodigo, api } from '../config.js';
+import fs from 'fs';
+import path from 'path';
+import axios from 'axios';
+import { fileURLToPath } from 'url';
+import { extraerNumero , generarIconosNumericos, buscarCodigoCereal} from '../utils.js';
+import userStates from '../userStates.js';
+import apiCliente from '../../services/apiCliente.js';
+const { verificarUsuarioValido, obtenerResumenDeCereales } = apiCliente;
+import mensajesDefault from '../mensajes/default.js';
+const iconosNumericos = generarIconosNumericos(50);
+async function cargarMensajesCliente(coopeId) {
+  const codigo = clientesCodigo[coopeId];
+  if (!codigo) return mensajesDefault;
+  const ruta = path.join(
+    path.dirname(fileURLToPath(import.meta.url)),
+    '..',
+    'mensajes',
+    `${codigo}.js`
+  );
+ 
+  return fs.existsSync(ruta) ? (await import(ruta)).default : mensajesDefault;
+}
 
 function normalizarCoope(coope) {
   return String(coope).trim().padStart(2, "0");
@@ -20,8 +34,10 @@ function obtenerCosecha(coope, cosechaRaw) {
     : `${cosechaRaw.slice(0, 2)}/${cosechaRaw.slice(2)}`;
 }
 
-module.exports = async (sock, from, text, userState) => {
-  await sock.sendMessage(from, { text: "⏳" + mensajes.mensaje_aguarde });
+export default async (sock, from, text, userState) => {
+  console.log('📥 Entrando a ficha de cereales : ');
+   const mensajesCliente = await cargarMensajesCliente(parseInt(config.cliente, 10));
+   await sock.sendMessage(from, { text: `⏳ ${mensajesCliente.mensaje_aguarde}` });
   try {
     const jid = from;
     const numero = extraerNumero(jid);
@@ -29,7 +45,7 @@ module.exports = async (sock, from, text, userState) => {
     // Verificar si el usuario es válido
     const validacion = await verificarUsuarioValido(numero, config.cliente);
     if (!validacion || !validacion.usuario) {
-      await sock.sendMessage(from, { text: mensajes.numero_no_asociado });
+      await sock.sendMessage(from, { text: mensajesCliente.numero_no_asociado });
       userStates.clearState(from); // Limpiar el estado del usuario
       return;
     }
@@ -37,7 +53,7 @@ module.exports = async (sock, from, text, userState) => {
     const usuario = validacion.usuario;
     const cuenta = usuario.cuenta;
     const coope = usuario.coope;
-
+    console.log('📥 Ficha de cereales : ', usuario, cuenta, coope);
     // Dividir el comando en partes
 
     const partes = text.split(/\s+/);
@@ -50,16 +66,12 @@ module.exports = async (sock, from, text, userState) => {
     }
     console.log('✅ Parámetros extraídos:', { partes });
     //const cereal = partes[1];
-    const cereal = partes[4];
-    const clase = partes[2];
-    const cosechaRaw = partes[3];
+    const cereal = partes[5];
+    const clase = partes[3];
+    const cosechaRaw = partes[4];
    
 
     const cosecha = obtenerCosecha(coope, cosechaRaw);
-
-    console.log(
-      `:: Ficha de cereales parámetros para enviar -> cereal: ${cereal}, clase: ${clase}, cosecha: ${cosecha}, cuenta: ${cuenta}`
-    );
 
     // Llamada a la API para generar el PDF
     
@@ -80,7 +92,7 @@ module.exports = async (sock, from, text, userState) => {
 
     if (pdfResponse.status !== 200) {
       console.error('Error al generar el PDF:', pdfResponse.data);
-      await sock.sendMessage(from, { text: mensajes.error_obtencion_ficha_cereales}, pdfResponse.status);
+      await sock.sendMessage(from, { text: mensajesCliente.error_obtencion_ficha_cereales}, pdfResponse.status);
       return;
     }
 
@@ -100,7 +112,7 @@ module.exports = async (sock, from, text, userState) => {
         fileName: `ficha-cereales-${cereal}-${clase}-${cosechaRaw}.pdf`,
       });
 
-      await sock.sendMessage(from, { text: mensajes.menu_respuesta_descarga });
+      await sock.sendMessage(from, { text: mensajesCliente.menu_respuesta_descarga });
 
       // Eliminar el archivo temporal después de enviarlo
       try {
@@ -112,10 +124,10 @@ module.exports = async (sock, from, text, userState) => {
 
     writer.on('error', async (error) => {
       console.error('Error al guardar el PDF:', error);
-      await sock.sendMessage(from, { text: mensajes.error_obtencion_ficha_cereales, error });
+      await sock.sendMessage(from, { text: mensajesCliente.error_obtencion_ficha_cereales, error });
     });
   } catch (error) {
     console.error('Error al generar/enviar el PDF:', error);
-    await sock.sendMessage(from, { text: mensajes.error_obtencion_ficha_cereales, error });
+    await sock.sendMessage(from, { text: mensajesCliente.error_obtencion_ficha_cereales, error });
   }
 };

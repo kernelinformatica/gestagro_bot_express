@@ -1,4 +1,5 @@
-const path = require('path');
-const { startBot } = require('./bot/index');
-require('./api/server');
+import path from 'path';
+import { startBot } from './bot/index.js';
+import './api/server.js';
+
 startBot();

@@ -1,12 +1,30 @@
-const ftp = require('basic-ftp');
-const fs = require('fs');
-const path = require('path');
-const { config, ftpUpload } = require('../config');
-const { downloadMediaMessage } = require('@whiskeysockets/baileys');
-const cuentasPermitidas = ["0520781", "0530059", "0530900","0530028", "0510282"];
 
-module.exports = async (sock, from, text, msg, cuenta, coope) => {
-    await sock.sendMessage(from, { text: "⏳"+mensajes.mensaje_aguarde});
+import { config, clientesCodigo, ftpUpload } from '../config.js';
+import fs from 'fs';
+import ftp from 'basic-ftp';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import { extraerNumero } from '../utils.js';
+import apiCliente from '../../services/apiCliente.js';
+const { verificarUsuarioValido } = apiCliente;
+import mensajesDefault from '../mensajes/default.js';
+import { downloadMediaMessage } from '@whiskeysockets/baileys';
+const cuentasPermitidas = ["0520781", "0530059", "0530900","0530028", "0510282"];
+async function cargarMensajesCliente(coopeId) {
+    const codigo = clientesCodigo[coopeId];
+    if (!codigo) return mensajesDefault;
+    const ruta = path.join(
+      path.dirname(fileURLToPath(import.meta.url)),
+      '..',
+      'mensajes',
+      `${codigo}.js`
+    );
+   
+    return fs.existsSync(ruta) ? (await import(ruta)).default : mensajesDefault;
+  }
+export default async (sock, from, text, msg, cuenta, coope) => {
+    const mensajesCliente = await cargarMensajesCliente(parseInt(config.cliente, 10));
+        await sock.sendMessage(from, { text: `⏳ ${mensajesCliente.mensaje_aguarde}` });
     // Repositorio de cuentas permitidas
     console.log('📥 Entrando a comando subirmercado FTP) ');
     //

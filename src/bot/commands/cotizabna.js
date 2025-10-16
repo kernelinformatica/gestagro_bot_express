@@ -1,11 +1,33 @@
-const axios = require('axios');
-const cheerio = require('cheerio');
-const mensajes = require('../../bot/mensajes/default');
-const { api, config } = require('../config');
-const { formatterPrecios } = require('../utils');
-const fs = require('fs'); 
-module.exports = async (sock, from, text, msg) => {
-  await sock.sendMessage(from, { text: "⏳"+mensajes.mensaje_aguarde});
+
+import { config, clientesCodigo, api } from '../config.js';
+import fs from 'fs';
+import path from 'path';
+import axios from 'axios';
+import * as cheerio from 'cheerio';
+import { fileURLToPath } from 'url';
+import { extraerNumero , generarIconosNumericos, buscarCodigoCereal, formatterPrecios} from '../utils.js';
+import userStates from '../userStates.js';
+import apiCliente from '../../services/apiCliente.js';
+const { verificarUsuarioValido, obtenerResumenDeCereales } = apiCliente;
+import mensajesDefault from '../mensajes/default.js';
+const iconosNumericos = generarIconosNumericos(50);
+
+async function cargarMensajesCliente(coopeId) {
+  const codigo = clientesCodigo[coopeId];
+  if (!codigo) return mensajesDefault;
+  const ruta = path.join(
+    path.dirname(fileURLToPath(import.meta.url)),
+    '..',
+    'mensajes',
+    `${codigo}.js`
+  );
+ 
+  return fs.existsSync(ruta) ? (await import(ruta)).default : mensajesDefault;
+}
+
+export default async (sock, from, text, msg) => {
+      const mensajesCliente = await cargarMensajesCliente(parseInt(config.cliente, 10));
+       await sock.sendMessage(from, { text: `⏳ ${mensajesCliente.mensaje_aguarde}` });
   try {
     const { data: html } = await axios.get(api.URL_BNA);
     const $ = cheerio.load(html);

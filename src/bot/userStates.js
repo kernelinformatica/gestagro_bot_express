@@ -1,22 +1,26 @@
-const userStates = {};
+export const userStates = {};
 
 // Establece el estado del usuario
-const setState = (userId, state) => {
+export const setState = (userId, state) => {
   userStates[userId] = state;
 };
 
 // Obtiene el estado del usuario
-const getState = (userId) => {
+export const getState = (userId) => {
   return userStates[userId];
 };
 
 // Limpia el estado del usuario
-const clearState = (userId) => {
+export const clearState = (userId) => {
   delete userStates[userId];
 };
 
+export const isBlocked = (userId) => {
+  return userStates[userId]?.bloqueado || false;
+};
+
 // Actualiza el código de empresa en el estado del usuario
-const setCompanyCode = (userId, companyCode) => {
+export const setCompanyCode = (userId, companyCode) => {
   if (userStates[userId]) {
     userStates[userId].codigoEmpresa = companyCode; // Actualiza el código de empresa en el estado existente
   } else {
@@ -24,4 +28,11 @@ const setCompanyCode = (userId, companyCode) => {
   }
 };
 
-module.exports = { setState, getState, clearState, setCompanyCode };
+// Exportación predeterminada
+export default {
+  userStates,
+  setState,
+  getState,
+  clearState,
+  setCompanyCode,
+};

@@ -1,45 +1,36 @@
 // 📦 Importaciones ESM
-import { makeWASocket, useMultiFileAuthState, DisconnectReason, fetchLatestBaileysVersion } from '@whiskeysockets/baileys';
-import { clientesCodigo } from './config.js';
+import { makeWASocket, useMultiFileAuthState, DisconnectReason } from '@whiskeysockets/baileys';
 import Boom from '@hapi/boom';
 import qrcode from 'qrcode-terminal';
 import pino from 'pino';
-import path from 'path';
 import fs from 'fs';
-import { fileURLToPath } from 'url';
+
 // 🧠 Módulos locales
 import userStates from './userStates.js';
 import { verificarUsuarioValido, loginRegistrarUsuario, login, loginValidarCuenta, loginEsperarRespuestaUsuario } from '../services/apiCliente.js';
 import { esNumeroWhatsApp, getCleanId, extraerNumero } from './utils.js';
-import { manejarRegistroUsuario } from './registroUsuario.js';
-
-
 
 // 📥 Comandos
 import info from './commands/info.js';
 import menu from './commands/menu.js';
 import pesos from './commands/ccpesos.js';
-import dolar from './commands/ccdolar.js';
 import pesosresumen from './commands/ccpesosresumen.js';
+import dolar from './commands/ccdolar.js';
+import solicitarDinero from './commands/solicitarDinero.js';
 import dolarresumen from './commands/ccdolarresumen.js';
 import resucer from './commands/resucer.js';
-import fichacereal from './commands/fichacer.js';
-import ficharomaneos from './commands/ficharom.js';
 import disponible from './commands/disponible.js';
 import futuro from './commands/futuro.js';
+import fichacereal from './commands/fichacer.js';
+import ficharomaneos from './commands/ficharom.js';
 import cotizaciones from './commands/cotizabna.js';
-import contacto from './commands/contacto.js';
-import salir from './commands/salir.js';
+import reiniciarempresa from './commands/reiniciarempresa.js';
+import porDefecto from './commands/default.js';
 import mensajes from './mensajes/default.js';
-import solicitarDinero from './commands/solicitarDinero.js';
 import pizarra from './commands/pizarra.js';
+import contacto from './commands/contacto.js';
 import subirmercado from './commands/uploadFtp.js';
-/*import porDefecto from './commands/default.js';
-
-
-
-
-*/
+import salir from './commands/salir.js';
 import { config } from './config.js';
 
 // 🧾 Logger
@@ -54,29 +45,22 @@ const logger = pino({ level: 'debug' });
 let sockInstance = null;
 let qrActual = null;
 
-export async function startBot() {
+async function startBot() {
   const { state, saveCreds } = await useMultiFileAuthState('auth');
-  const { version } = await fetchLatestBaileysVersion(); // Obtener la última versión de WhatsApp compatible
-  const sock = makeWASocket({
-    auth: state,
-    logger,
-    version,
-    printQRInTerminal: true, // Imprime el QR directamente en la terminal
-  });
+  const sock = makeWASocket.default({ auth: state  });
 
   sockInstance = sock;
 
   // Guardar credenciales
   sock.ev.on('creds.update', saveCreds);
 
-
-  // Manejo de eventos de conexión
-  sock.ev.on('connection.update', (update) => {
-    const { connection, lastDisconnect, qr } = update;
-
+  
+  sock.ev.on('connection.update', ({ connection, lastDisconnect, qr }) => {
+    console.log('🔄 Estado de conexión:', connection, lastDisconnect, qr);
     if (qr) {
       qrActual = qr;
       console.log('🔐 Escaneá este QR para vincular:');
+      const qrcode = require('qrcode-terminal');
       qrcode.generate(qr, { small: true });
     }
 
@@ -112,8 +96,10 @@ export async function startBot() {
 
   // Manejo de mensajes
   sock.ev.on('messages.upsert', async ({ messages, type }) => {
+    console.log('📍 Punto de control 1 - Nuevo mensaje recibido');
     try {
       const msg = messages[0];
+
       // Ignorar mensajes del sistema o enviados por el propio bot
       if (!msg.message || msg.key.fromMe || msg.key.remoteJid === 'status@broadcast') {
         console.log('⚠️ ' + msg.key.remoteJid + ', Mensaje del sistema o propio, ignorando.');
@@ -122,217 +108,138 @@ export async function startBot() {
 
 
 
-      const uniqueMessageID = `${msg.key.remoteJid}-${msg.key.id}`;
-      if (processedMessages.has(uniqueMessageID)) {
-        console.log('⚠️ Mensaje duplicado detectado, ignorando:', uniqueMessageID);
-        return; // Ya procesado
-      }
-      processedMessages.add(uniqueMessageID);
+      const messageID = msg.key.id;
+      if (processedMessages.has(messageID)) return; // Ya procesado
+      processedMessages.add(messageID);
       //console.log('📦 Tipo de mensaje:', Object.keys(msg.message));
       const from = msg.key.remoteJid ?? '';
 
 
       //console.log('📥 Mensaje recibido :', msg);
-
       const text = normalizeText(msg);
 
-
+      
       // console.log(`📩 Mensaje recibido de ${from}: ${text}: ${type}`);
-
+     
       const jid = from;
       const numero = extraerNumero(jid, msg.key.senderPn);
-      let numeroInterno = jid.includes('@lid') ? jid.split('@')[0] : '0';
-      if (!numeroInterno || numeroInterno === '0') {
-        numeroInterno = 0;
-      }
-      let cliente = 0;
+      const numeroInterno = jid.includes('@lid') ? jid.split('@')[0] : '0';
       
       console.log('📨 Numero extraido: ', numero)
       console.log('📨 Identificador interno:', numeroInterno);
-      console.log('📨 JID completo:', jid);
-      console.log('📨 Api Propietaria: ', config.apiPropietaria, config.cliente);
-      console.log('📨 Tipo y valor de config.apiPropietaria:', typeof config.apiPropietaria, config.apiPropietaria);
-      try {
-        if (config.apiPropietaria === true || config.apiPropietaria === "true") {
-          console.log('📨 -> Valor de config.cliente:', config.cliente);
-          cliente = config.cliente;
-          console.log('📨 -> Valor de cliente:', cliente);
-        } else {
-          cliente = "0";
-        }
-
-      } catch (error) {
-        console.error('🛑 Error en la configuración de cliente:', error);
+      if (config.apiPropietaria === true) {
+        cliente = config.cliente
+      } else {
+        cliente = "0"
       }
-
       const validacion = await verificarUsuarioValido(numero, cliente);
-      console.log('Cliente actual: ', cliente);
+      console.log('Cliente actual: ', cliente); 
       console.log("------------------------------------------------------------------------------------------------------");
       console.log('🔍 Validación de usuario:', validacion);
       console.log("------------------------------------------------------------------------------------------------------");
-
+     
       // Registro de USUARIOS
-      
-      if (!validacion["usuario"] || typeof validacion["usuario"] !== "object") {
-        console.log('📍 Punto de control 1.5 - Antes de manejarRegistroUsuario -> '+cliente);
-        const mensajesCliente = await cargarMensajesCliente(parseInt(cliente, 10));
-        await sock.sendMessage(from, { text: `⏳ ${mensajesCliente.mensaje_aguarde}` });
+      if (!validacion["usuario"] || typeof validacion["usuario"] !== "object") {  
+     
         const userState = userStates.getState(from) || {};
-      
-        // Si el usuario no tiene estado, enviar el mensaje inicial y detener el flujo
+    
+        // Si el estado del usuario ya está en "esperando cuenta", no enviar el mensaje inicial
         if (!userState.estado) {
-          console.log('❌ Usuario no autorizado:', numero);
-          await sock.sendMessage(from, {
-            text: mensajesCliente.registro_no_registrado,
-          });
-      
-          // Inicializar el estado del usuario con bloqueado: false
-          userStates.setState(from, { estado: 'esperando_cuenta', bloqueado: false });
-          return; // Detener el flujo aquí
+            console.log('❌ Usuario no autorizado:', numero);
+            await sock.sendMessage(from, { text: "❌ 😢 No estás registrado como asociado.\n\nPor favor, ingresa tu número de cuenta asociada proporcionado por la Cooperativa para poder validar tu usuario." });
+    
+            // Actualizar el estado del usuario a "esperando cuenta"
+            userStates.setState(from, { estado: 'esperando_cuenta' });
+            return;
         }
-      
-        // Manejo del estado "esperando_cuenta"
+    
+        // Si el estado es "esperando cuenta", procesar la respuesta del usuario
         if (userState.estado === 'esperando_cuenta') {
-          if (userState.bloqueado) {
-            console.log('⏳ Usuario ya está en proceso de validación, esperando respuesta...');
-            return;
-          }
-      
-          console.log('⏳ Esperando número de cuenta del usuario...');
-          const cuentaResponse = text.trim(); // Usar el texto ingresado como número de cuenta
-          console.log('📨 Número de cuenta recibido:', cuentaResponse);
-      
-          // Validar si el usuario ingresó un número de cuenta
-          if (!cuentaResponse || isNaN(cuentaResponse)) {
-            await sock.sendMessage(from, { text: mensajesCliente.registro_cuenta_invalida  });
-            return;
-          }
-      
-          // Bloquear el estado para evitar múltiples mensajes
-          userStates.setState(from, { ...userState, bloqueado: true });
-      
-          try {
+            console.log('⏳ Esperando número de cuenta del usuario...');
+            const cuentaResponse = text.trim(); // Usar el texto ingresado como número de cuenta
+            console.log('📨 Número de cuenta recibido:', cuentaResponse);
+    
             // Validar el número de cuenta
-            await sock.sendMessage(from, { text: mensajesCliente.mensaje_aguarde });
             const cuentaValida = await loginValidarCuenta(cuentaResponse);
-      
+            await sock.sendMessage(from, { text: "⏳ Validando datos, aguarde..." });
+    
             if (!cuentaValida) {
-              await sock.sendMessage(from, { text: mensajesCliente.registro_cuenta_invalida  });
-      
-              // Reiniciar el estado del usuario
-              userStates.setState(from, { estado: 'esperando_cuenta', bloqueado: false });
-              return;
+                await sock.sendMessage(from, { text: "❌ 😢 Número de cuenta inválida. Intenta nuevamente." });
+    
+                // Reiniciar el estado del usuario
+                userStates.setState(from, null);
+                await sock.sendMessage(from, { text: "🔄 Vamos a empezar de nuevo. Por favor, ingresa tu número de cuenta asociada." });
+                return;
             }
-      
+    
             // Solicitar la clave del usuario
-            await sock.sendMessage(from, { text: mensajesCliente.registro_solicita_clave+" Nro de cuenta: "+cuentaResponse  });
+            await sock.sendMessage(from, { text: "🔒 Por favor, ingresa tu clave para la cuenta " + cuentaResponse });
             console.log('⏳ Esperando clave del usuario...');
-      
-            // Actualizar el estado del usuario a "esperando_clave"
-            userStates.setState(from, { estado: 'esperando_clave', cuenta: cuentaResponse, bloqueado: false });
-          } catch (error) {
-            console.error('🛑 Error al validar la cuenta:', error);
-            await sock.sendMessage(from, { text: mensajesCliente.registro_error_general + " "+error });
-      
-            // Reiniciar el estado del usuario
-            userStates.setState(from, { estado: 'esperando_cuenta', bloqueado: false });
-          }
-          return;
-        }
-      
-        // Manejo del estado "esperando_clave"
-        if (userState.estado === 'esperando_clave') {
-          if (userState.bloqueado) {
-            console.log('⏳ Usuario ya está en proceso de validación, esperando respuesta...');
+    
+            // Actualizar el estado del usuario a "esperando clave"
+            userStates.setState(from, { estado: 'esperando_clave', cuenta: cuentaResponse });
             return;
-          }
-      
-          console.log('⏳ Esperando clave del usuario...');
-          const claveResponse = text.trim(); // Usar el texto ingresado como clave
-          console.log('📨 Clave recibida:', claveResponse);
-      
-          // Bloquear el estado para evitar múltiples mensajes
-          userStates.setState(from, { ...userState, bloqueado: true });
-      
-          try {
+        }
+    
+        // Si el estado es "esperando clave", procesar la clave del usuario
+        if (userState.estado === 'esperando_clave') {
+          await sock.sendMessage(from, { text: "⏳ Validando datos, aguarde..." });
+            console.log('⏳ Esperando clave del usuario...');
+            const claveResponse = text.trim(); // Usar el texto ingresado como clave
+            console.log('📨 Clave recibida:', claveResponse);
+    
             // Validar la clave del usuario
             const cuentaResponse = userState.cuenta; // Recuperar la cuenta almacenada en el estado
             const claveValida = await login(cuentaResponse, claveResponse);
             console.log('🔑 Login:', claveValida, cliente);
-      
             if (!claveValida) {
-              await sock.sendMessage(from, {
-                text: mensajesCliente.registro_clave_invalida,
-              });
-      
-              // Reiniciar el estado del usuario completamente
-              userStates.setState(from, { estado: 'esperando_cuenta', bloqueado: false });
-              return;
+                await sock.sendMessage(from, { text: "❌ 🔑 Clave inválida. Intenta nuevamente.\n\nSi no recuerda su clave, póngase en contacto con la Cooperativa" });
+    
+                // Reiniciar el estado del usuario
+                userStates.setState(from, null);
+                await sock.sendMessage(from, { text: "🔄 Vamos a empezar de nuevo. Por favor, ingresa tu número de cuenta asociada." });
+                return;
             }
-      
+    
             // Registrar el número de teléfono
             const registroValido = await loginRegistrarUsuario(numero, numeroInterno, cuentaResponse, cliente);
-            console.log('📝 Registro de usuario:', registroValido, "NRO INTERNO: ",numeroInterno);
-      
+            console.log('📝 Registro de usuario:', registroValido);
             if (!registroValido) {
-              await sock.sendMessage(from, { text: mensajesCliente.registro_error_general  });
-      
-              // Reiniciar el estado del usuario
-              userStates.setState(from, { estado: 'esperando_cuenta', bloqueado: false });
-              return;
+                await sock.sendMessage(from, { text: "❌ 🤖 Error al registrar el usuario. Intenta nuevamente por favor." });
+    
+                // Reiniciar el estado del usuario
+                userStates.setState(from, null);
+                await sock.sendMessage(from, { text: "🔄 Vamos a empezar de nuevo. Por favor, ingresa tu número de cuenta asociada." });
+                return;
             }
-      
+    
             console.log('✅ Usuario registrado exitosamente:', numero);
-            await sock.sendMessage(from, { text: mensajesCliente.felicitaciones_registro });
-      
+            await sock.sendMessage(from, { text: mensajes.felicitaciones_registro });
+    
             // Limpiar el estado del usuario
-            userStates.clearState(from);
-          } catch (error) {
-            console.error('🛑 Error al validar la clave:', error);
-            await sock.sendMessage(from, { text: mensajesCliente.registro_clave_error });
-      
-            // Reiniciar el estado del usuario
-            userStates.setState(from, { estado: 'esperando_cuenta', bloqueado: false });
-          }
-          return;
+            userStates.setState(from, null);
+            return;
         }
       }
-
-
-      /*
-        ver luego de usar el helper modular...
-        await manejarRegistroUsuario({
-        from,
-        text,
-        sock,
-        numero,
-        numeroInterno,
-        cliente,
-        validacion,
-        userStates,
-        mensajes
-      });*/
-
       // Fin de registro de USUARIOS
+     
       const usuario = validacion["usuario"];
-      const id = usuario["coope"];
+      const id = usuario["coope"]; 
       const cta = usuario["cuenta"];
       const clave = usuario["clave"];
       const nombre = usuario["nombre"];
-
+      
       console.log(`ID: ${id}, Cuenta: ${cta}, Clave: ${clave}, Nombre: ${nombre}`);
 
-
-      const coope = id
-      const coopeNumero = parseInt(coope, 10);
-      console.log("============================= ACA VALIDO EL USUARIO: " + cta + "-" + text + "-" + coope + "-" + config.cliente + "-" + coopeNumero + " =========================================")
+        // Si necesitas usar coope como número, conviértelo aquí
+      const coope = parseInt(id, 10);
+        
+      console.log("============================= ACA VALIDO EL USUARIO: "+ cta+ " =========================================")
 
       if (!text) {
         //console.log('⚠️ No se recibió texto válido.');
         return;
       }
-
-
       if (config.apiPropietaria === true) {
 
         if (config.cliente != coope) {
@@ -340,12 +247,11 @@ export async function startBot() {
           await sock.sendMessage(from, { text: "😢 " + mensajes.noAutorizado });
           return
         }
-        console.log('✅ Usuario autorizado:', numero);
         // Detectar si el mensaje contiene una imagen solo para maximo paz
-        /*if (msg.message.imageMessage || coope === "05") {
+        if (msg.message.imageMessage || coope === "05") {
           await subirmercado(sock, from, text, msg, cta); // Llama al comando de subida SFTP
           return;
-        }*/
+        }
 
       }
       if (!id) {
@@ -355,10 +261,9 @@ export async function startBot() {
       }
       const cuenta = cta;
       const nombreSocio = nombre
-
       console.log('📦 -------------------------> Usuario:', numero + "| Cliente: " + coope + " | Nombre Socio: " + nombreSocio + " <-----------------------------------");
 
-      /*const comandosPorCliente = {
+      const comandosPorCliente = {
         '01': {
           menu,
           'menu': menu,
@@ -618,108 +523,18 @@ export async function startBot() {
           reiniciarempresa,
           '99': reiniciarempresa
         }
-      };*/
-      const comandosPorCliente = {
-        '05': {
-          menu,
-          'menu': menu,
-          '0': menu,
-          'hola': menu,
-          info,
-          'info': info,
-          '1': info,
-          pesos,
-          'pesos': pesos,
-          '2': pesos,
-          pesosresumen,
-          'resumen': pesosresumen,
-          '10': pesosresumen,
-          cereales: resucer,
-          '3': resucer,
-          f: fichacereal,
-          '55': fichacereal,
-          r: ficharomaneos,
-          '56': ficharomaneos,
-          pizarra,
-          '4': pizarra,
-          cotizaciones,
-          '5': cotizaciones,
-          contacto,
-          '6': contacto,
-          solicitarDinero,
-          '7': solicitarDinero,
-          salir,
-          '8': salir,
-          'salir': salir,
-          subirmercado,
-          '98': subirmercado,
-         
-        },
-        '11': {
-          menu,
-          'menu': menu,
-          '0': menu,
-          'hola': menu,
-          pesos,
-          'pesos': pesos,
-          '1': pesos,
-          pesosresumen,
-          'resumen': pesosresumen,
-          '10': pesosresumen,
-          dolar,
-          'dolar': dolar,
-          '2': dolar,
-          'dolarresumen': dolarresumen,
-          '11': dolarresumen,
-          cereales: resucer,
-          '3': resucer,
-
-          f: fichacereal,
-          '55': fichacereal,
-
-          r: ficharomaneos,
-          '56': ficharomaneos,
-
-          disponible,
-          '4': disponible,
-          futuro,
-          '5': futuro,
-
-          cotizaciones,
-          '6': cotizaciones,
-          contacto,
-          '7': contacto,
-
-          salir,
-          '8': salir,
-          'salir': salir,
-          /*
-        */
-        },
-        'default': {
-          menu,
-          'menu': menu,
-          '0': menu,
-          info,
-          'info': info,
-          '1': info,
-          pesos,
-          'pesos': pesos,
-          '2': pesos,
-        },
-
       };
 
 
-
-      /*if (coope < 9) {
+      let cli = ""
+      if (coope < 9) {
         cli = "0" + coope;
       } else {
         cli = coope;
-      }*/
+      }
       console.log('📍 Punto de control 1.5');
-      const comandos = comandosPorCliente[coope] || comandosPorCliente['default'];
-      console.log("comandos: " + comandosPorCliente[coope])
+      const comandos = comandosPorCliente[cli] || comandosPorCliente['default'];
+      console.log("comandos: " + comandosPorCliente[cli])
       console.log('📍 Punto de control 2');
       console.log('🔍 Comandos disponibles para este usuario:', comandos);
       // Obtener estado del usuario
@@ -752,7 +567,7 @@ export async function startBot() {
 
       // Detectar y ejecutar comando
       const comandoDetectado = detectarComando(text, Object.keys(comandos));
-
+     
       if (comandoDetectado) {
         console.log('✅ Comando detectado:', "LLEGA ACA ?");
         await comandos[comandoDetectado](sock, from, text, msg);
@@ -770,15 +585,17 @@ export async function startBot() {
 
 
 
+// Normalizar texto recibido
 function normalizeText(msg) {
-  console.dir(msg, { depth: null }); // Para depurar la estructura del mensaje
+  //console.log('📨 Mensaje completo recibido:');
+  console.dir(msg, { depth: null });
 
   const m = msg.message;
 
   // Ignorar mensajes de protocolo (eliminados, modo desaparición, etc.)
   if (m?.protocolMessage) return '';
 
-  // Ignorar reacciones (pueden procesarse aparte si es necesario)
+  // Ignorar reacciones (pueden procesarse aparte si querés)
   if (m?.reactionMessage) return '';
 
   // Ignorar mensajes de stickers (sin texto)
@@ -789,39 +606,22 @@ function normalizeText(msg) {
 
   // Extraer texto de múltiples tipos de mensajes
   const text =
-    m?.extendedTextMessage?.text ?? // Mensajes con texto extendido
-    m?.conversation ?? // Mensajes de texto simples
-    m?.imageMessage?.caption ?? // Texto en imágenes
-    m?.videoMessage?.caption ?? // Texto en videos
-    m?.documentMessage?.caption ?? // Texto en documentos
-    m?.buttonsResponseMessage?.selectedButtonId ?? // Respuesta a botones
-    m?.listResponseMessage?.title ?? // Respuesta a listas
-    m?.templateButtonReplyMessage?.selectedId ?? // Respuesta a botones de plantilla
-    m?.pollUpdateMessage?.name ?? // Nombre de encuestas
-    m?.audioMessage?.caption ?? // Texto en audios
-    m?.contactMessage?.displayName ?? // Nombre en contactos
-    m?.locationMessage?.name ?? // Nombre en ubicaciones
+    m?.conversation ??
+    m?.extendedTextMessage?.text ??
+    m?.imageMessage?.caption ??
+    m?.videoMessage?.caption ??
+    m?.documentMessage?.caption ??
+    m?.buttonsResponseMessage?.selectedButtonId ??
+    m?.listResponseMessage?.title ??
+    m?.audioMessage?.caption ?? // si el audio tiene texto
+    m?.contactMessage?.displayName ?? // si se envía un contacto con nombre
+    m?.locationMessage?.name ?? // si se envía una ubicación con nombre
     '';
-  //console.log('📨 :::: Texto extraído: "%s"', text);
+
   return text.trim().toLowerCase();
 }
 
 
-async function cargarMensajesCliente(coopeId) {
-  console.log("cargarMensajesCliente("+coopeId+")");
-  const codigo = clientesCodigo[coopeId];
-  console.log("cargarMensajesCliente("+coopeId+") -> "+codigo);
-  if (!codigo) return mensajes;
-  const ruta = path.join(
-    path.dirname(fileURLToPath(import.meta.url)),
-    '..',
-    'mensajes',
-    `${codigo}.js`
-  );
- 
- 
-  return fs.existsSync(ruta) ? (await import(ruta)).default : mensajes;
-}
 
 
 // Detectar comando
@@ -882,16 +682,16 @@ async function handleResumenCereales(sock, from, text, userState) {
   if (tipo === 'f' && userState.opcionesFicha[`F${numero}`]) {
     const { cereal, clase, cosecha, cereal_codigo } = userState.opcionesFicha[`F${numero}`];
     const comandoCompleto = `F ${cereal} ${clase} ${cosecha} ${cereal_codigo}`;
-    //console.log('🔍 Comando completo ficha cereales:', comandoCompleto);
+    console.log('🔍 Comando completo ficha cereales:', comandoCompleto);
     await fichacereal(sock, from, comandoCompleto, userState);
   } else if (tipo === 'r' && userState.opcionesRomaneos[`R${numero}`]) {
     const { cereal, clase, cosecha, cereal_codigo } = userState.opcionesRomaneos[`R${numero}`];
     const comandoCompleto = `R ${cereal} ${clase} ${cosecha} ${cereal_codigo}`;
-    //console.log('🔍 Comando completo ficha romaneos:', comandoCompleto);
+    console.log('🔍 Comando completo ficha romaneos:', comandoCompleto);
     await ficharomaneos(sock, from, comandoCompleto, userState);
   } else {
     // Si el texto no es válido, enviar un mensaje de error
     await sock.sendMessage(getCleanId(from), { text: mensajes.comando_desconocido });
   }
 }
-export default { startBot, sockInstance };
+module.exports = { startBot, sockInstance };

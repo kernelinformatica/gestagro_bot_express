@@ -1,6 +1,6 @@
-const express = require('express');
-const { startBot } = require('../bot/index'); 
-const config = require('../bot/config').config;
+import express from 'express';
+import { startBot } from '../bot/index.js';
+import { config } from '../bot/config.js';
 const app = express();
 
 app.use(express.json());

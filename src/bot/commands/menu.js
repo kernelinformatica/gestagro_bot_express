@@ -1,49 +1,59 @@
-const { config, clientesCodigo } = require('../config');
-const fs = require('fs');
-const path = require('path');
-const { extraerNumero } = require('../utils');
-const { verificarUsuarioValido } = require('../../services/apiCliente');
-const mensajesDefault = require('../mensajes/default');
+import { config, clientesCodigo } from '../config.js';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import { extraerNumero } from '../utils.js';
+import apiCliente from '../../services/apiCliente.js';
+const { verificarUsuarioValido } = apiCliente;
+import mensajesDefault from '../mensajes/default.js';
 
-function cargarMensajesCliente(coopeId) {
+// Función para cargar mensajes personalizados del cliente
+async function cargarMensajesCliente(coopeId) {
   const codigo = clientesCodigo[coopeId];
   if (!codigo) return mensajesDefault;
-  const ruta = path.join(__dirname, '..', 'mensajes', `${codigo}.js`);
-  return fs.existsSync(ruta) ? require(ruta) : mensajesDefault;
+  const ruta = path.join(
+    path.dirname(fileURLToPath(import.meta.url)),
+    '..',
+    'mensajes',
+    `${codigo}.js`
+  );
+ 
+  return fs.existsSync(ruta) ? (await import(ruta)).default : mensajesDefault;
 }
 
-module.exports = async (sock, from, text, msg) => {
-  await sock.sendMessage(from, { text: "⏳ Procesando su solicitud..." });
-  const jid = from
+export default async (sock, from, text, msg) => {
+  const mensajesCliente = await cargarMensajesCliente(parseInt(config.cliente, 10));
+  await sock.sendMessage(from, { text: `⏳ ${mensajesCliente.mensaje_aguarde}` });
+
+  const jid = from;
   const numero = extraerNumero(jid);
-  const cuenta = "0"
-  const logo = fs.readFileSync(config.clienteLogo);
-  const imagen = fs.readFileSync(config.clienteRobotImg);
-  
+
   try {
+    // Validar usuario
     const validacion = await verificarUsuarioValido(numero, config.cliente);
     if (!validacion?.usuario) {
-      await sock.sendMessage(from, { text: mensajesDefault.numero_no_asociado });
+      await sock.sendMessage(from, { text: mensajesCliente.numero_no_asociado });
       return;
     }
 
-   const [id] = validacion.usuario.coope;
-   const nombre = validacion.usuario.nombre;
-   const coopeCli = parseInt(id, 10);
-   const imagen = fs.readFileSync(config.clienteRobotImg); 
-   const mensajesCliente = cargarMensajesCliente(validacion.usuario["coope"]);
-   const response = mensajesCliente.menu;
-   if (config.mensajesConLogo == "S"){
-    await sock.sendMessage(from, { image: imagen, caption: "👋 Hola "+nombre + "\n\n"+response  });
-  }  else{
-    await sock.sendMessage(from, { text: response});
-  }
+    // Datos del usuario
+    const [id] = validacion.usuario.coope;
+    const nombre = validacion.usuario.nombre;
+    const coopeCli = parseInt(config.cliente, 10);
 
+    // Cargar mensajes personalizados
 
-   
-
+    console.log('Mensajes cargados:', mensajesCliente);
+    const response = mensajesCliente.menu;
+    
+    // Enviar mensaje con o sin logo según configuración
+    if (config.mensajesConLogo === 'S') {
+      await sock.sendMessage(from, { image: { url: config.clienteRobotImg }, caption: `👋 Hola ${nombre}\n\n${mensajesCliente.menu}` });
+    } else {
+      await sock.sendMessage(from, { text: response });
+    }
   } catch (error) {
     console.error('Error al procesar mensaje:', error);
-    await sock.sendMessage(from, { text: mensajesDefault.error_solicitud +" | "+error});
+    await sock.sendMessage(from, { text: `${mensajesDefault.error_solicitud} | ${error}` });
   }
 };

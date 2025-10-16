@@ -1,25 +1,33 @@
+import { config, clientesCodigo } from '../config.js';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import { extraerNumero } from '../utils.js';
+import apiCliente from '../../services/apiCliente.js';
+const { verificarUsuarioValido } = apiCliente;
+import mensajesDefault from '../mensajes/default.js';
 
-const { config, clientesCodigo } = require('../config');
-const fs = require('fs');
-const path = require('path');
-const { extraerNumero } = require('../utils');
-const { verificarUsuarioValido } = require('../../services/apiCliente');
-const mensajesDefault = require('../mensajes/default');
 
-
-
-
-function cargarMensajesCliente(coopeId) {
+async function cargarMensajesCliente(coopeId) {
   const codigo = clientesCodigo[coopeId];
   if (!codigo) return mensajesDefault;
+  const ruta = path.join(
+    path.dirname(fileURLToPath(import.meta.url)),
+    '..',
+    'mensajes',
+    `${codigo}.js`
+  );
 
-  const ruta = path.join(__dirname, '..', 'mensajes', `${codigo}.js`);
-  return fs.existsSync(ruta) ? require(ruta) : mensajesDefault;
+  return fs.existsSync(ruta) ? (await import(ruta)).default : mensajesDefault;
 }
-module.exports = async (sock, from, text, msg) => {
-  await sock.sendMessage(from, { text: "⏳"+mensajes.mensaje_aguarde});
+
+export default async  (sock, from, text, msg) => {
+  console.log('📥 Entrando a comando info : ');
+  const mensajesCliente = await cargarMensajesCliente(parseInt(config.cliente, 10));
+  await sock.sendMessage(from, { text: "⏳  "+mensajesCliente.mensaje_aguarde });
+
   try {
-    console.log('📥 Entrando a comando info');
+    
     const jid = from
     const numero = extraerNumero(jid);
     // Verificar si el usuario es válido
@@ -29,24 +37,14 @@ module.exports = async (sock, from, text, msg) => {
       userStates.clearState(from); // Limpiar el estado del usuario
       return;
     }
-
+    
     const usuario = validacion.usuario;
     const cuenta = usuario.cuenta;
     const coope = usuario.coope;
-
-    const nombreSocio = usuario[3].split(' ').slice(1).join(' ');
     const cuerpo_1 = "🤖 HOLA"
     const imagen = fs.readFileSync(config.clienteRobotImg);
- 
-    if (!validacion || !validacion.usuario) {
-
-      await sock.sendMessage(getCleanId(from), { text: mensajesDefault.numero_no_asociado });
-      return;
-    }
-  
-    const mensajesCliente = cargarMensajesCliente(coope);
     const response =  mensajesCliente.gestagro;
-    console.log('📥 info()');
+  
  
     if (config.mensajesConLogo == "S"){
       await sock.sendMessage(from, { image: imagen, caption: `${response}`});

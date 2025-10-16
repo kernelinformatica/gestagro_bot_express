@@ -1,15 +1,38 @@
-const { obtenerResumenDeCereales, verificarUsuarioValido } = require('../../services/apiCliente');
-const { generarIconosNumericos } = require('./../utils');
-const userStates = require('../userStates'); // Importar el manejo de estados
-const mensajes = require("../mensajes/default");
-const { getCleanId, extraerNumero } = require('../utils');
+import { config, clientesCodigo, api } from '../config.js';
+import fs from 'fs';
+import path from 'path';
+import axios from 'axios';
+import { fileURLToPath } from 'url';
+import { extraerNumero , generarIconosNumericos} from '../utils.js';
+import userStates from '../userStates.js';
+import apiCliente from '../../services/apiCliente.js';
+const { verificarUsuarioValido, obtenerResumenDeCereales } = apiCliente;
+import mensajesDefault from '../mensajes/default.js';
 const iconosNumericos = generarIconosNumericos(50);
-const { config } = require('../config');
-const fs = require('fs'); 
 
-module.exports = async (sock, from, nroCuenta, text) => {
-  console.log(":: Resumen de cereales ::");
-  await sock.sendMessage(from, { text: "⏳" + mensajes.mensaje_aguarde });
+
+
+
+
+
+async function cargarMensajesCliente(coopeId) {
+  const codigo = clientesCodigo[coopeId];
+  if (!codigo) return mensajesDefault;
+  const ruta = path.join(
+    path.dirname(fileURLToPath(import.meta.url)),
+    '..',
+    'mensajes',
+    `${codigo}.js`
+  );
+ 
+  return fs.existsSync(ruta) ? (await import(ruta)).default : mensajesDefault;
+}
+
+
+export default async (sock, from, nroCuenta, text) => {
+  console.log('📥 Entrando a resumen de cereales : ');
+  const mensajesCliente = await cargarMensajesCliente(parseInt(config.cliente, 10));
+  await sock.sendMessage(from, { text: `⏳ ${mensajesCliente.mensaje_aguarde}` });
   try {
     const jid = from;
     const numero = extraerNumero(jid);
@@ -18,17 +41,15 @@ module.exports = async (sock, from, nroCuenta, text) => {
     // Verificar si el usuario es válido
     const validacion = await verificarUsuarioValido(numero, config.cliente);
     if (!validacion || !validacion.usuario) {
-      await sock.sendMessage(from, { text: mensajes.numero_no_asociado });
+      await sock.sendMessage(from, { text: mensajesCliente.numero_no_asociado });
       userStates.clearState(from); // Limpiar el estado del usuario
       return;
     }
 
     // Obtener el resumen de cereales
     const resu = await obtenerResumenDeCereales(numero);
-    console.log("Resumen obtenido:", resu);
-
     let resumenObj;
-
+    console.log(":: Respuesta de la API de resumen de cereales:", resu);
     // Validar y convertir el mensaje de la API
     if (typeof resu.message === 'string') {
       try {
@@ -36,7 +57,7 @@ module.exports = async (sock, from, nroCuenta, text) => {
         resumenObj = JSON.parse(jsonString);
       } catch (error) {
         console.error("🛑 Error al convertir el mensaje de la API a JSON:", error);
-        await sock.sendMessage(from, { text: mensajes.error_solicitud });
+        await sock.sendMessage(from, { text: mensajesCliente.error_solicitud });
         userStates.clearState(from); // Limpiar el estado del usuario
         return;
       }
@@ -47,7 +68,7 @@ module.exports = async (sock, from, nroCuenta, text) => {
     // Validar que el resumen tenga los datos necesarios
     if (!resumenObj || !resumenObj.resumen || !Array.isArray(resumenObj.resumen)) {
       console.error("Datos de resumen inválidos:", resumenObj);
-      await sock.sendMessage(from, { text: mensajes.error_solicitud });
+      await sock.sendMessage(from, { text: mensajesCliente.error_solicitud });
       userStates.clearState(from); // Limpiar el estado del usuario
       return;
     }
@@ -61,8 +82,6 @@ module.exports = async (sock, from, nroCuenta, text) => {
     mensaje += `${nombreSocio}\n` + sep;
 
     resumenObj.resumen.forEach((item, index) => {
-      console.log(`Procesando registro ${index + 1}:`, item);
-
       // Validar que los campos necesarios existan
       if (!item.cereal || !item.clase_codigo || !item.cosecha) {
         console.warn(`⚠️ Registro inválido en índice ${index}:`, item);

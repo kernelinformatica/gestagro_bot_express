@@ -1,33 +1,51 @@
+import { config, clientesCodigo } from '../config.js';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import { extraerNumero } from '../utils.js';
+import apiCliente from '../../services/apiCliente.js';
+const { verificarUsuarioValido, obtenerSaldo } = apiCliente;
+import mensajesDefault from '../mensajes/default.js';
 
-const { obtenerSaldo, verificarUsuarioValido } = require('../../services/apiCliente');
-const mensajes = require('../../bot/mensajes/default');
-const { getCleanId, extraerNumero } = require('../utils');
-const { config } = require('../config');
-const fs = require('fs'); 
 
-module.exports = async (sock, from, nroCuenta = "0") => {
-  await sock.sendMessage(from, { text: "⏳"+mensajes.mensaje_aguarde });
+async function cargarMensajesCliente(coopeId) {
+  const codigo = clientesCodigo[coopeId];
+  if (!codigo) return mensajesDefault;
+  const ruta = path.join(
+    path.dirname(fileURLToPath(import.meta.url)),
+    '..',
+    'mensajes',
+    `${codigo}.js`
+  );
+ 
+  return fs.existsSync(ruta) ? (await import(ruta)).default : mensajesDefault;
+}
+
+export default async (sock, from, nroCuenta = "0") => {
+  const mensajesCliente = await cargarMensajesCliente(parseInt(config.cliente, 10));
+    await sock.sendMessage(from, { text: `⏳ ${mensajesCliente.mensaje_aguarde}` });
   try {
-    const jid = from;
-    const numero = extraerNumero(jid);
-    const cuenta = "0"
-    // Verificar si el usuario es válido
-    const imagen = fs.readFileSync(config.clienteRobotImg);
-    const validacion = await verificarUsuarioValido(numero);
-    if (!validacion || !validacion.usuario) {
-      await sock.sendMessage(from, { text: messajes.numero_no_asociado });
-      return;
-    }
+    console.log('📥 Entrando a comando ccdolar : ');
+    const jid = from
+        const numero = extraerNumero(jid);
+        const validacion = await verificarUsuarioValido(numero, config.cliente);
+        const cuenta = "0"
+        const logo = fs.readFileSync(config.clienteLogo);
+        const imagen = fs.readFileSync(config.clienteRobotImg);
+        if (!validacion || !validacion.usuario) {
+          await sock.sendMessage(from, { text: mensajes.numero_no_asociado });
+          userStates.clearState(from); // Limpiar el estado del usuario
+          return;
+        }
+        console.log(':: Solicitando saldo en dólares :: ');
+        const saldo = await obtenerSaldo( numero, "USD", cuenta);
     
-    // Obtener el saldo en dólares
-    const resp = await obtenerSaldo(numero, "USD", cuenta);
-
-    if (config.mensajesConLogo == "S"){
-      await sock.sendMessage(from, { image: imagen, caption: resp.message  });
-    }  else{
-      await sock.sendMessage(from, { text: resp.message });
-    }
-
+    
+        if (config.mensajesConLogo == "S"){
+          await sock.sendMessage(from, { image: imagen, caption: saldo.message  });
+        }  else{
+          await sock.sendMessage(from, { text: saldo.message });
+        }
 
 
    

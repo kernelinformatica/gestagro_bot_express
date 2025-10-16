@@ -1,10 +1,11 @@
-const cerealesPorDescripcion = require('./maps/cereales'); // Ruta correcta
-const dns = require('dns');
-const url = require('url');
-const axios = require('axios');
+import {cerealesPorDescripcion}  from './maps/cereales.js';
+
+import dns from 'dns';
+import url from 'url';
+import axios from 'axios';
 
 
-function generarIconosNumericos(hasta = 100) {
+export function generarIconosNumericos(hasta = 100) {
   const iconos = [];
   const emojiNumeros = ['0️⃣', '1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣', '6️⃣', '7️⃣', '8️⃣', '9️⃣'];
 
@@ -20,7 +21,7 @@ function generarIconosNumericos(hasta = 100) {
 
   return iconos;
 }
-const formatterPrecios = new Intl.NumberFormat('es-AR', {
+export const formatterPrecios = new Intl.NumberFormat('es-AR', {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2
   });
@@ -32,18 +33,18 @@ function normalizarEntrada(texto) {
     return emojiToNumero[texto.trim()] || texto.trim();
 }
   
-function buscarCodigoCereal(nombreCereal) {
+export function buscarCodigoCereal(nombreCereal) {
   console.log('Buscando código para el cereal:', nombreCereal);
   const nombreNormalizado = nombreCereal.toUpperCase(); // Convertir a mayúsculas para asegurar coincidencia
   return cerealesPorDescripcion[nombreNormalizado] || null; // Retornar el código o null si no se encuentra
 }
 
 
-function esNumeroWhatsApp(remitente) {
+export function esNumeroWhatsApp(remitente) {
   return remitente.endsWith('@s.whatsapp.net');
 }
 
-function getCleanId(rawId) {
+export function getCleanId(rawId) {
  
   if (!rawId || typeof rawId !== 'string') {
     console.warn('⚠️ JID inválido recibido:', rawId);
@@ -65,7 +66,8 @@ function getCleanId(rawId) {
   //console.log('|-------------------> Identificador desconocido, se devuelve tal cual:', rawId);
   return rawId;
 }
-function extraerNumero(jid, senderPn) {
+
+export function extraerNumero(jid, senderPn) {
   if (!jid || typeof jid !== 'string') {
     console.warn('⚠️ JID inválido recibido:', jid);
     return '';
@@ -107,7 +109,8 @@ function limpiarPrefijo(numero) {
   }
   return numero; // Devolver el número tal cual si no tiene prefijo
 }
-async function descargarImagenRemota(imageUrl) {
+
+export async function descargarImagenRemota(imageUrl) {
   if (!imageUrl || typeof imageUrl !== 'string') {
     throw new Error('URL no válida o indefinida');
   }
@@ -179,8 +182,21 @@ async function descargarImagenRemotaHttps(imageUrl) {
   }
 }
 
+export async function cargarMensajesCliente(coopeId) {
+  const codigo = clientesCodigo[coopeId];
+  if (!codigo) return mensajesDefault;
+  const ruta = path.join(
+    path.dirname(fileURLToPath(import.meta.url)),
+    '..',
+    'mensajes',
+    `${codigo}.js`
+  );
+
+  return fs.existsSync(ruta) ? (await import(ruta)).default : mensajesDefault;
+}
 
   
-module.exports = { generarIconosNumericos,formatterPrecios, normalizarEntrada, buscarCodigoCereal , getCleanId, extraerNumero, descargarImagenRemota};
+
+export default {cargarMensajesCliente ,generarIconosNumericos,formatterPrecios, normalizarEntrada, buscarCodigoCereal , getCleanId, extraerNumero, descargarImagenRemota, esNumeroWhatsApp};
 
   
