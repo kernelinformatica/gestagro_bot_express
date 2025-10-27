@@ -26,7 +26,7 @@ const mensajesDefault = {
     mensaje_volver : '🤖 Ecribí *menu* para volver al menu principal.',
     mensaje_error_comando :'❓ No entendí tu mensaje. Escribí *menu* para volver al menú principal.',
     comando_desconocido :  `🤷 No entiendo tu mensaje:\n\nPor favor, intenta con otro comando o escribi *menu* para ver las opciones disponibles.`,
-    noAutorizado : '❌ Su celular no está autorizado para interactuar con este bot, por favor contáctese con su cooperativa asociada para activar su número.\n\n📢 Si su número de celular ya fue asociado por la cooperativa y no le he respondido con el menú de opciones, entonces contáctese con el área de soporte técnico al '+info.telefonoSoporte+', para habiltar su número correctamente.\n\n Hasta pronto !! 👋',
+    noAutorizado : '❌ Su celular no está autorizado para interactuar con este bot, por favor contáctese con su cooperativa asociada para activar su número, o al 3416435556.\n\n Hasta pronto !! 👋',
     registro_cuenta : '🤖 Para registrarte y comenzar a usar el bot, necesito que me proporciones tu número de cuenta.\n\n🔢 Por favor, ingresa tu número de cuenta (sin espacios ni guiones):',
     registro_cuenta_pedida : '🔢 Por favor, ingresa tu número de cuenta (sin espacios ni guiones):',
     registro_cuenta_invalida :  '😢 ❌ El número de cuenta que ingresaste no es válido. Por favor, verifica e ingresa un número de cuenta correcto (solo números, sin espacios ni guiones):',
@@ -36,6 +36,16 @@ const mensajesDefault = {
     registro_error_general : '😢 Ocurrió un error inesperado durante el registro. Por favor, intenta nuevamente más tarde.' ,
     registro_clave_invalida: '🔑 ❌ La clave ingresada no es válida. Asegúrate de que la clave no contenga espacios. Por favor, ingresa una clave válida.\n\nSi no recuerda su clave, póngase en contacto con la Cooperativa.\n\nAhora ingresá nuevamente el nro de cuenta.',
     felicitaciones_registro : '✅ 🎉Felicitaciones !!! \n\n👍 El registro fue exitoso. Ahora puedes usar el bot.\n\n🤖 Ecribí *menu* para conocer los comandos que tengo disponibles.',
+    sf_pregunta_fecha_acreditacion: "¿Qué fecha de acreditación prefiere?, ingrese YYYY-MM-DD' (por ejemplo, 1900-01-01).",
+    sf_pregunta_cantidad_dinero: "¿Cuál es el monto que desea solicitar?\n\n_Por favor, ingrese la cantidad en pesos argentinos (ARS)._",
+    sf_ingrese_cantidad_valida: "⚠️ La cantidad ingresada no es válida.\n\n_Por favor, ingrese un monto numérico positivo en pesos argentinos (ARS)._",
+    sf_ingrese_una_opcion_valida : 'Por favor, seleccione una opción válida (A, B, C).',
+    sf_solicitud_procesando :"⏳ Procesando su solicitud, por favor espere...",
+    sf_solicitud_exito: "✅ Su solicitud ha sido procesada con éxito:\n",
+    sf_solicitud_error : `❌ Su solicitud no se pudo procesar debido a un error inesperado, inténte nuevamente más tarde.\n\nEscriba *"menu"* para volver al menú principal.`,
+    sf_solicitud_condiciones: "📝 _Tenga en cuenta que las solicitudes de dinero, se tramitarán y se resolverán en un lapso máximo de 48 hs, desde el día que se realizó el pedido._",
+    sf_salida_flujo_transferencias : '✅ Has salido del menu PEDIDO DE FONDOS. Escribe *"menu"* para volver al menú principal.'
+
 }
 export default mensajesDefault;
 

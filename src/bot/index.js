@@ -9,9 +9,10 @@ import fs from 'fs';
 import { fileURLToPath } from 'url';
 // 🧠 Módulos locales
 import userStates from './userStates.js';
-import { verificarUsuarioValido, loginRegistrarUsuario, login, loginValidarCuenta, loginEsperarRespuestaUsuario } from '../services/apiCliente.js';
+import { verificarUsuarioValido, loginRegistrarUsuario, login, loginValidarCuenta, loginEsperarRespuestaUsuario, confirmarPedidoDeFondos, traerCbusPorCuenta } from '../services/apiCliente.js';
 import { esNumeroWhatsApp, getCleanId, extraerNumero } from './utils.js';
 import { manejarRegistroUsuario } from './registroUsuario.js';
+
 
 
 
@@ -154,9 +155,9 @@ export async function startBot() {
       console.log('📨 Tipo y valor de config.apiPropietaria:', typeof config.apiPropietaria, config.apiPropietaria);
       try {
         if (config.apiPropietaria === true || config.apiPropietaria === "true") {
-          console.log('📨 -> Valor de config.cliente:', config.cliente);
+         
           cliente = config.cliente;
-          console.log('📨 -> Valor de cliente:', cliente);
+          
         } else {
           cliente = "0";
         }
@@ -166,10 +167,10 @@ export async function startBot() {
       }
 
       const validacion = await verificarUsuarioValido(numero, cliente);
-      console.log('Cliente actual: ', cliente);
-      console.log("------------------------------------------------------------------------------------------------------");
-      console.log('🔍 Validación de usuario:', validacion);
-      console.log("------------------------------------------------------------------------------------------------------");
+      //console.log('Cliente actual: ', cliente);
+      //console.log("------------------------------------------------------------------------------------------------------");
+      //console.log('🔍 Validación de usuario:', validacion);
+      //console.log("------------------------------------------------------------------------------------------------------");
 
       // Registro de USUARIOS
       
@@ -299,22 +300,14 @@ export async function startBot() {
       }
 
 
-      /*
-        ver luego de usar el helper modular...
-        await manejarRegistroUsuario({
-        from,
-        text,
-        sock,
-        numero,
-        numeroInterno,
-        cliente,
-        validacion,
-        userStates,
-        mensajes
-      });*/
+    
 
       // Fin de registro de USUARIOS
       const usuario = validacion["usuario"];
+    
+        
+
+
       const id = usuario["coope"];
       const cta = usuario["cuenta"];
       const clave = usuario["clave"];
@@ -327,36 +320,40 @@ export async function startBot() {
       const coopeNumero = parseInt(coope, 10);
       console.log("============================= ACA VALIDO EL USUARIO: " + cta + "-" + text + "-" + coope + "-" + config.cliente + "-" + coopeNumero + " =========================================")
 
-      if (!text) {
-        //console.log('⚠️ No se recibió texto válido.');
-        return;
-      }
+      
 
 
       if (config.apiPropietaria === true) {
-
         if (config.cliente != coope) {
           console.log("😢 Cliente no autorizado")
           await sock.sendMessage(from, { text: "😢 " + mensajes.noAutorizado });
           return
         }
-        console.log('✅ Usuario autorizado:', numero);
+        //console.log('✅ Usuario autorizado:', numero);
         // Detectar si el mensaje contiene una imagen solo para maximo paz
-        /*if (msg.message.imageMessage || coope === "05") {
-          await subirmercado(sock, from, text, msg, cta); // Llama al comando de subida SFTP
-          return;
-        }*/
+      
+        if (msg.message.imageMessage && config.cliente === "05") {
+          console.log('📷 Mensaje con imagen detectado para cliente 05 (Maximo Paz) dentro del comando "pizarra". Procesando subida...');
+          if (msg.message.imageMessage.mimetype === 'image/jpeg' || msg.message.imageMessage.mimetype === 'image/png') {
+            await subirmercado(sock, from, text, msg, cta); // Llama al comando de subida SFTP
+            return;
+          }
+        }
 
       }
+      if (!text) {
+        //console.log('⚠️ No se recibió texto válido.');
+        return;
+      }
       if (!id) {
-        console.log('❌ Usuario no autorizado:', numero);
+        
         await sock.sendMessage(from, { text: "😢 " + mensajes.noAutorizado });
         return
       }
       const cuenta = cta;
       const nombreSocio = nombre
 
-      console.log('📦 -------------------------> Usuario:', numero + "| Cliente: " + coope + " | Nombre Socio: " + nombreSocio + " <-----------------------------------");
+      console.log('📦 -------------------------> Usuario:', numero + "| Cliente: " + coope + " |  Cuenta: "+ cuenta + " | Nombre Socio: " + nombreSocio + " <-----------------------------------");
 
       /*const comandosPorCliente = {
         '01': {
@@ -687,14 +684,52 @@ export async function startBot() {
 
           cotizaciones,
           '6': cotizaciones,
+          
+          solicitarDinero,
+          '7': solicitarDinero,
+
+
           contacto,
-          '7': contacto,
+          '8': contacto,
 
           salir,
-          '8': salir,
+          '9': salir,
           'salir': salir,
           /*
         */
+        },
+        '12':{
+          menu,
+          'menu': menu,
+          '0': menu,
+          'hola': menu,
+          pesos,
+          'pesos': pesos,
+          '1': pesos,
+          pesosresumen,
+          'resumen': pesosresumen,
+          '10': pesosresumen,
+          dolar,
+          'dolar': dolar,
+          '2': dolar,
+          'resumendolar': dolarresumen,
+          '11': dolarresumen,
+          cereales: resucer,
+          '3': resucer,
+          f: fichacereal,
+          '55': fichacereal,
+          r: ficharomaneos,
+          '56': ficharomaneos,
+          disponible,
+          '4': disponible,
+          futuro,
+          '5': futuro,
+          cotizaciones,
+          '6': cotizaciones,
+          contacto,
+          '7': contacto,
+          salir,
+          '8': salir,
         },
         'default': {
           menu,
@@ -711,17 +746,9 @@ export async function startBot() {
       };
 
 
-
-      /*if (coope < 9) {
-        cli = "0" + coope;
-      } else {
-        cli = coope;
-      }*/
-      console.log('📍 Punto de control 1.5');
+     
       const comandos = comandosPorCliente[coope] || comandosPorCliente['default'];
-      console.log("comandos: " + comandosPorCliente[coope])
-      console.log('📍 Punto de control 2');
-      console.log('🔍 Comandos disponibles para este usuario:', comandos);
+      //console.log('🔍 Comandos disponibles para este usuario:', comandos);
       // Obtener estado del usuario
       const userState = userStates.getState(from) || {};
       console.log('🔍 Estado del usuario:', userState);
@@ -737,10 +764,17 @@ export async function startBot() {
         return;
       }
 
-      // Manejo de comandos en estado "pedido_fondos"
-      if (userState.estado === 'pedido_fondos') {
-        //await handleResumenCereales(sock, from, text, userState);
-        //return;
+      // Manejo de comandos en estado "preguntar_tipo_transferencia"
+      if (userState.estado) {
+        console.log('📍 El usuario está en un flujo específico:', userState.estado);
+        if (userState.estado === 'preguntar_tipo_transferencia' ||
+            userState.estado === 'preguntar_cantidad_dinero' ||
+            userState.estado === 'preguntar_cbu' ||
+            userState.estado === 'preguntar_fecha_acreditacion' ||
+            userState.estado === 'confirmar_solicitud') {
+          await handlePedidoDeFondos(sock, from, text, userState, numero, numeroInterno,cuenta);
+          return;
+        }
       }
       // Manejo de comandos en estado "pedido_fondos"
       if (userState.estado === 'reserva_cereales') {
@@ -754,7 +788,16 @@ export async function startBot() {
       const comandoDetectado = detectarComando(text, Object.keys(comandos));
 
       if (comandoDetectado) {
-        console.log('✅ Comando detectado:', "LLEGA ACA ?");
+        if ( comandoDetectado === '7'  ) {
+          // Setear el estado del usuario a "solicitud_fondos"
+          userStates.setState(from, { estado: 'preguntar_tipo_transferencia', bloqueado: true, comandoActual: '7' });
+          const userState = userStates.getState(from); // Obtener el estado actualizado
+          console.log(`📍 Punto de control -> Estado actual: ${userState.estado}`);
+  
+          await handlePedidoDeFondos(sock, from, text, userState, numero, numeroInterno, cuenta);
+      
+        
+        }
         await comandos[comandoDetectado](sock, from, text, msg);
       } else {
         await sock.sendMessage(getCleanId(from), { text: mensajes.comando_desconocido });
@@ -807,21 +850,7 @@ function normalizeText(msg) {
 }
 
 
-async function cargarMensajesCliente(coopeId) {
-  console.log("cargarMensajesCliente("+coopeId+")");
-  const codigo = clientesCodigo[coopeId];
-  console.log("cargarMensajesCliente("+coopeId+") -> "+codigo);
-  if (!codigo) return mensajes;
-  const ruta = path.join(
-    path.dirname(fileURLToPath(import.meta.url)),
-    '..',
-    'mensajes',
-    `${codigo}.js`
-  );
- 
- 
-  return fs.existsSync(ruta) ? (await import(ruta)).default : mensajes;
-}
+
 
 
 // Detectar comando
@@ -893,5 +922,285 @@ async function handleResumenCereales(sock, from, text, userState) {
     // Si el texto no es válido, enviar un mensaje de error
     await sock.sendMessage(getCleanId(from), { text: mensajes.comando_desconocido });
   }
+
+  
+  
+
 }
+
+
+async function handlePedidoDeFondos(sock, from, text, userState, numeroCelu, numeroInterno, cuenta) {
+ 
+ 
+ 
+  console.log('📍 Punto de control en handlePedidoDeFondos - Estado actual:',  numeroCelu, numeroInterno, cuenta) ;
+  const tipo = text[0]?.toLowerCase(); // Primer carácter del texto
+  const numero = text.slice(1); // Resto del texto
+  const imagen = fs.readFileSync(config.clienteRobotImg);
+  let msgCli = await cargarMensajesCliente(parseInt(config.cliente, 10));
+  
+    // Comando "salir" para salir del flujo
+    if (text.toLowerCase() === '4' || text.toLowerCase() === 'salir') {
+      console.log('🔙 El usuario ha salido del flujo de transferencias.');
+      userStates.setState(from, { estado: null, bloqueado: false }); // Limpiar el estado
+      await sock.sendMessage(from, { text: msgCli.sf_salida_flujo_transferencias });
+      return;
+    }
+
+
+  if (userState.estado === 'preguntar_tipo_transferencia') {
+    console.log('📥 Comando recibido para tipo de transferencia:', text);
+
+    // Mapeo de opciones específicas
+    const opciones = {
+      1: 'Transferencia',
+      2: 'Cheque',
+      3: 'Cheque Electrónico',
+      4: 'Salir',
+      
+    };
+
+    const seleccion = opciones[tipo]; // Convertir a minúscula para evitar errores
+    if (!seleccion) {
+      console.log('❌ Comando inválido:', text);
+    //  await sock.sendMessage(from, { text: msgCli.sf_ingrese_una_opcion_valida });
+      return;
+    }
+    console.log('✅ Tipo de operación seleccionada:', seleccion);
+    
+    
+    userStates.setState(from, { ...userState, bloqueado: true, tipoTransferencia: seleccion, comandoActual: '7',  estado: 'preguntar_cantidad_dinero' });
+    await sock.sendMessage(from, { text: `🤖 Tipo de operación seleccionada:\n ${seleccion}.` });
+    await sock.sendMessage(from, { text: msgCli.sf_pregunta_cantidad_dinero}); ;
+    return;
+  }
+
+  if (userState.estado === 'preguntar_cantidad_dinero') {
+    console.log('📥 Comando recibido para cantidad de dinero:', text);
+    // Normalizar el texto ingresado
+    const textoNormalizado = text.replace(/,/g, '').trim(); // Eliminar comas y espacios
+    const cantidad = parseFloat(textoNormalizado);
+  
+    if (isNaN(cantidad) || cantidad <= 0) {
+      await sock.sendMessage(from, { text: msgCli.sf_ingrese_cantidad_valida });
+      return;
+    }
+  
+    // Manejo de cantidad de dinero
+    if (userState.tipoTransferencia === 'Transferencia') {
+      
+      let cbus = await traerCbusPorCuenta(numeroCelu, numeroInterno, cuenta, config.cliente);
+      if (cbus?.message?.cbu?.length > 0) {
+        let cbus_msg = "💳 CBUS asociados a SU cuenta:\n\n";
+        cbus_msg += `Seleccione la cuenta destino para la transferencia ingresando el número correspondiente:\n\n`;
+        cbus.message.cbu.forEach((item, index) => {
+          cbus_msg += `✅ ${index + 1} - Banco: ${item.bancoNombre}\n`;
+          cbus_msg += `💳 CBU: **********${item.cbu.slice(-10)}\n`; // Mostrar solo los últimos 10 caracteres
+          cbus_msg += `-----------------------------\n`;
+        });
+        console.log('✅ CBUs obtenidos correctamente.', cbus_msg);
+  
+        // Enviar la lista de CBUs al usuario
+        await sock.sendMessage(from, { text: cbus_msg });
+  
+        // Actualizar el estado del usuario para esperar la selección del CBU
+        userStates.setState(from, {
+          ...userState,
+          bloqueado: true,
+          cantidadDinero: cantidad,
+          estado: 'preguntar_cbu',
+          cbus: cbus.message.cbu, // Guardar la lista de CBUs en el estado
+        });
+        return;
+      } else {
+        console.warn('⚠️ No se encontraron CBUs asociados a la cuenta.');
+        await sock.sendMessage(from, { text: '❌ No se encontraron CBUs asociados a su cuenta.' });
+        return;
+      }
+    }
+  
+    // Actualizar el estado del usuario para avanzar al siguiente paso
+    userStates.setState(from, { ...userState, bloqueado: true, cantidadDinero: cantidad, estado: 'preguntar_fecha_acreditacion' });
+    await sock.sendMessage(from, { text: `🤖 Ha Ingresado: $ ${cantidad}.` });
+    await sock.sendMessage(from, { text: msgCli.sf_pregunta_fecha_acreditacion });
+    return;
+  }
+  
+  if (userState.estado === 'preguntar_cbu') {
+    console.log('📥 Comando recibido para selección de CBU:', text);
+  
+    const seleccion = parseInt(text.trim(), 10); // Convertir la selección a número
+    const cbus = userState.cbus;
+  
+    if (isNaN(seleccion) || seleccion < 1 || seleccion > cbus.length) {
+      await sock.sendMessage(from, { text: '❌ Opción inválida. Por favor, seleccione un número de la lista.' });
+      return;
+    }
+  
+    // Obtener el CBU seleccionado
+    const cbuSeleccionado = cbus[seleccion - 1];
+    console.log('✅ CBU seleccionado:', cbuSeleccionado);
+  
+    // Guardar el banco seleccionado en el estado del usuario
+    userStates.setState(from, {
+      ...userState,
+      bloqueado: true,
+      bancoSeleccionado: cbuSeleccionado.bancoNombre,
+      bancoSeleccionadoCodigo: cbuSeleccionado.idBanco,
+      cbuSeleccionado: cbuSeleccionado.cbu,
+      cbuIdPadron: cbuSeleccionado.idCbuPadron,
+      estado: 'preguntar_fecha_acreditacion', // Continuar con el flujo
+    });
+
+
+  
+    await sock.sendMessage(from, {
+      text: `✅ Ha seleccionado el banco: ${cbuSeleccionado.bancoNombre}\n💳 CBU: **********${cbuSeleccionado.cbu.slice(-5)}\n\nPor favor, ingrese la fecha de acreditación en el formato "YYYY-MM-DD".`,
+    });
+    return;
+  }
+ 
+  if (userState.estado === 'preguntar_fecha_acreditacion') {
+    console.log('📥 Comando recibido para fecha de acreditación:', text);
+  
+    // Validar el formato de la fecha
+    const fechaRegex = /^\d{4}-\d{2}-\d{2}$/; // Formato YYYY-MM-DD
+    if (!fechaRegex.test(text)) {
+      await sock.sendMessage(from, {
+        text: '❌ Formato de fecha inválido. Por favor, ingrese la fecha en el formato "YYYY-MM-DD" (por ejemplo, 2025-10-22).'
+      });
+      return;
+    }
+  
+    // Validar si la fecha es válida
+    const fechaAcreditacion = new Date(text);
+    if (isNaN(fechaAcreditacion.getTime())) {
+      await sock.sendMessage(from, {
+        text: '❌ Fecha inválida. Por favor, ingrese una fecha válida en el formato "YYYY-MM-DD".'
+      });
+      return;
+    }
+  
+    // Validar que sea mayor a hoy + 48 horas
+    const ahora = new Date();
+    const fechaMinima = new Date(ahora.getTime() + 48 * 60 * 60 * 1000); // hoy + 48 hs
+  
+    if (fechaAcreditacion <= fechaMinima) {
+      const fechaMinimaStr = fechaMinima.toISOString().split('T')[0];
+      await sock.sendMessage(from, {
+        text: `⚠️ La fecha ingresada debe ser posterior a ${fechaMinimaStr} (72 horas desde ahora). Por favor, ingrese una nueva fecha válida.`
+      });
+      return;
+    }
+  
+    // Actualizar el estado del usuario
+    userStates.setState(from, {
+      ...userState,
+      bloqueado: true,
+      fechaAcreditacion: text,
+      estado: 'confirmar_solicitud'
+    });
+  
+    console.log('✅ Fecha de acreditación ingresada:', text);
+  
+    await sock.sendMessage(from, {
+      text: `🤖 Fecha de acreditación ingresada: ${text}. \n\n¿Desea confirmar la solicitud? Responda con "Sí" o "No".`
+    });
+    return;
+  }
+  
+
+  if (userState.estado === 'confirmar_solicitud') {
+
+    console.log('📥 Comando recibido para confirmar solicitud:', userState.tipoTransferencia, userState.cantidadDinero, userState.fechaAcreditacion);
+    let transaccion = false;
+    const respuesta = text.trim().toLowerCase();
+    if (respuesta === 'sí' || respuesta === 'si') {
+      //numero, numeroInterno, cuenta, tipo, cantidad, fechaAcreditacion, coope)
+      await sock.sendMessage(from, {
+        text: msgCli.sf_solicitud_procesando,
+      });
+      transaccion = await confirmarPedidoDeFondos(numeroCelu, numeroInterno, cuenta, userState.tipoTransferencia, userState.cantidadDinero, userState.fechaAcreditacion, userState.cbuSeleccionado, userState.bancoSeleccionadoCodigo,  config.cliente);
+      if (transaccion == true){
+        let msg_banco = ""
+        if (userState.tipoTransferencia === 'Transferencia') {
+          msg_banco = "\n"+userState.bancoSeleccionado+"\nCBU: **********"+userState.cbuSeleccionado.slice(-5)+"\n"
+        }else{
+          msg_banco = ""
+        }
+        /*bancoSeleccionado: 'BANCO DE LA NACION ARGENTINA',
+        bancoSeleccionadoCodigo: 11,
+        cbuSeleccionado: '1234567891022396898974',
+        cbuIdPadron: 1374*/
+
+        let sep = "---------------------------------------"
+        
+        if (config.mensajesConLogo === 'S') {
+          await sock.sendMessage(from, { image: imagen, caption:  msgCli.sf_solicitud_exito+`${msg_banco}\n- Tipo de operación: ${userState.tipoTransferencia}\n- Cantidad: $ ${userState.cantidadDinero}\n- Fecha de acreditación: ${userState.fechaAcreditacion}\n\nPuede consultar el estado de sus operaciones ingresando el comando *'operaciones'*\n\n${msgCli.sf_solicitud_condiciones}\n\n🤖 👍 Gracias por usar nuestro servicio.\n\n_${config.clienteNombre}_\n\n\Escriba *'menu'* para volver al menu principal` });
+        } else {
+          await sock.sendMessage(from, {
+            text: msgCli.sf_solicitud_exito+`${msg_banco}\n- Tipo de operación: ${userState.tipoTransferencia}\n- Cantidad: $ ${userState.cantidadDinero}\n- Fecha estimada de acreditación: $ ${userState.fechaAcreditacion}\n\nPuede consultar el estado de sus operaciones ingresando el comando *'operaciones'*\n\n${msgCli.sf_solicitud_condiciones}\n\n 🤖 👍 Gracias por usar nuestro servicio.\n\n_${config.clienteNombre}_\n\n\Escriba *'menu'* para volver al menu principal` 
+          });
+        }
+
+
+       
+        } else {
+          await sock.sendMessage(from, {
+            text: msgCli.sf_solicitud_error,
+          });
+        
+      }
+
+  
+      // Limpiar el estado del usuario
+      userStates.setState(from, { estado: null });
+    } else if (respuesta === 'no') {
+      console.log('❌ Solicitud cancelada.');
+      await sock.sendMessage(from, {
+        text: '❌ Su solicitud ha sido cancelada.\n\n Si desea realizar otra operación, escriba *"menu"*.',
+      });
+      
+      // Limpiar el estado del usuario
+      userStates.setState(from, { estado: null , bloqueado: false });
+      await sock.sendMessage(from, {
+        text: 'Puede escribir *"menu"* para volver al menu principal.',
+      });
+    } else {
+      console.log('❓ Respuesta no válida:', text);
+      await sock.sendMessage(from, {
+        text: 'Por favor, responda con *"Sí"* para confirmar o *"No"* para cancelar.',
+      });
+    }
+    return;
+  }
+
+ 
+
+
+
+  // Si el texto no es válido, enviar un mensaje de error
+  console.log('❌ Comando desconocido en handlePedidoDeFondos:', text);
+  await sock.sendMessage(getCleanId(from), { text: mensajes.comando_desconocido });
+}
+
+
+
+async function cargarMensajesCliente(coopeId) {
+  console.log("cargarMensajesCliente("+coopeId+")");
+  const codigo = clientesCodigo[coopeId];
+  console.log("cargarMensajesCliente("+coopeId+") -> "+codigo);
+  if (!codigo) return mensajes;
+  const ruta = path.join(
+    path.dirname(fileURLToPath(import.meta.url)),
+    '..',
+    'mensajes',
+    `${codigo}.js`
+  );
+ 
+ 
+  return fs.existsSync(ruta) ? (await import(ruta)).default : mensajes;
+}
+
+
 export default { startBot, sockInstance };

@@ -10,6 +10,7 @@ export const config = {
     clienteNombre : "COOPERATIVA AGRICOLA DE MAXIMO PAZ LIMITADA.",
     clienteLogo: "/home/administrador/chatbot-gestagro/bot-godoy/src/assets/logos/05.png",
     clienteRobotImg: "/home/administrador/chatbot-gestagro/bot-godoy/src/assets/robots/05.jpg",
+    
     /*
     cliente : "29", 
     puerto: 3003, // puerto del servidor donde corre la API 
@@ -19,14 +20,13 @@ export const config = {
     clienteRobotImg: "/home/administrador/chatbot-gestagro/bot-gcrespo/src/assets/robots/29.jpg",
     */
 
-   /*
-    cliente : 12,  
+  /*
+    cliente : "12",  
     puerto: 3004, 
     clienteAlias : "GODOY BOT",
     clienteNombre : "COOPERATIVA AGRICOLA DE GODOY LIMITADA.",
     clienteLogo: "/home/administrador/chatbot-gestagro/bot-godoy/src/assets/logos/12.png",
     clienteRobotImg: "/home/administrador/chatbot-gestagro/bot-godoy/src/assets/robots/12.jpg",
-    */
 
     
    /*

@@ -3,6 +3,7 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { extraerNumero } from '../utils.js';
+import userStates from '../userStates.js';
 import apiCliente from '../../services/apiCliente.js';
 const { verificarUsuarioValido } = apiCliente;
 import mensajesDefault from '../mensajes/default.js';
@@ -20,80 +21,52 @@ async function cargarMensajesCliente(coopeId) {
   return fs.existsSync(ruta) ? (await import(ruta)).default : mensajesDefault;
 }
 
-export default async (sock, from, nroCuenta = "0", userState) => {
+export default async (sock, from, nroCuenta, text) => {
+  console.log('📥 Entrando a solicitar dinero : ' + text);
   const mensajesCliente = await cargarMensajesCliente(parseInt(config.cliente, 10));
+  await sock.sendMessage(from, { text: `⏳ ${mensajesCliente.mensaje_aguarde}` });
+
   try {
     const jid = from;
     const numero = extraerNumero(jid);
+    const imagen = fs.readFileSync(config.clienteRobotImg);
 
     // Verificar si el usuario es válido
     const validacion = await verificarUsuarioValido(numero, config.cliente);
     if (!validacion || !validacion.usuario) {
       await sock.sendMessage(from, { text: mensajesCliente.numero_no_asociado });
+      userStates.clearState(from); // Limpiar el estado del usuario
       return;
     }
-
-    // Flujo de preguntas basado en estados
-    if (!userState.estado) {
-      // Preguntar el tipo de transferencia
-      userState.estado = 'preguntar_tipo_transferencia';
-
-      if (config.mensajesConLogo === 'S') {
-        await sock.sendMessage(from, { image: { url: config.clienteRobotImg }, caption: '¿Qué tipo de operacioón desea realizar?\n1️⃣ Transferencia\n2️⃣ Cheque\n3️⃣ Cheque electronico\n4️⃣ Otro..',});
-      } else {
-        await sock.sendMessage(from, { text: '\n¿Qué tipo de operación desea realizar?\n1️⃣ Transferencia\n2️⃣ Cheque\n3️⃣ Cheque electronico\n4️⃣ Otro..', });
-      }
-
-
-
-   
-      return;
-    }
-
-    if (userState.estado === 'preguntar_tipo_transferencia') {
-      // Guardar el tipo de transferencia seleccionado
-      const seleccion = parseInt(nroCuenta, 10);
-      if (isNaN(seleccion) || seleccion < 1 || seleccion > 3) {
-
-        if (config.mensajesConLogo === 'S') {
-          await sock.sendMessage(from, { image: { url: config.clienteRobotImg }, caption: 'Por favor, seleccione una opción válida (1️⃣,2️⃣ o 3️⃣).' });
-        } else {
-          await sock.sendMessage(from, { text: 'Por favor, seleccione una opción válida (1️⃣,2️⃣ , 3️⃣, 4️⃣).' });
+    let comando = '0';
+    // Configurar el estado inicial del flujo
+    if (config.cliente == "11") {
+      comando = '7';
+    }else if (config.cliente == "05") {
+      comando = '7';
         }
+    userStates.setState(from, { estado: 'preguntar_tipo_transferencia', comandoActual:comando });
 
-       
-        return;
-      }
+    // Crear el mensaje inicial
+    let mensaje = '🤖 *Solicitud de Dinero*\n\n';
+    mensaje += '¿Qué tipo de operación desea realizar?\n';
+    mensaje += '1️⃣ Transferencia\n';
+    mensaje += '2️⃣ Cheque\n';
+    mensaje += '3️⃣ Cheque electrónico\n';
+    mensaje += '4️⃣ Salir\n';
 
-      const tiposTransferencia = ['Transferencia', 'Cheque', 'Cheque Electronico', 'Otro..'];
-      userState.tipoTransferencia = tiposTransferencia[seleccion - 1];
-      userState.estado = 'preguntar_cantidad_dinero';
 
-      await sock.sendMessage(from, { text: `Ha seleccionado: ${userState.tipoTransferencia}.` });
-      await sock.sendMessage(from, { text: '¿Qué cantidad de dinero desea solicitar?' });
-      return;
-    }
-
-    if (userState.estado === 'preguntar_cantidad_dinero') {
-      // Guardar la cantidad de dinero
-      const cantidad = parseFloat(nroCuenta);
-      if (isNaN(cantidad) || cantidad <= 0) {
-        await sock.sendMessage(from, { text: 'Por favor, ingrese una cantidad válida.' });
-        return;
-      }
-
-      userState.cantidadDinero = cantidad;
-      userState.estado = null; // Finalizar el flujo
-
-      await sock.sendMessage(from, {
-        text: `Solicitud completada:\n- Tipo de transferencia: ${userState.tipoTransferencia}\n- Cantidad: ${userState.cantidadDinero}`,
-      });
-
-      // Aquí puedes continuar con el proceso, como guardar en la base de datos o llamar a otra función
-      return;
+    // Enviar el mensaje inicial
+    if (config.mensajesConLogo === 'S') {
+      console.log("Enviando mensaje con logo -> ", mensaje);
+      await sock.sendMessage(from, { image: imagen, caption: mensaje });
+    } else {
+      console.log("Enviando mensaje sin logo -> ", mensaje);
+      await sock.sendMessage(from, { text: mensaje });
     }
   } catch (error) {
     console.error('🛑 Error en solicitarDinero:', error);
-    await sock.sendMessage(from, { text: mensajesDefault.error_obtencion_saldos });
+    await sock.sendMessage(from, { text: mensajesCliente.error_obtencion_saldos });
+    userStates.clearState(from); // Limpiar el estado del usuario en caso de error
   }
 };

@@ -320,6 +320,8 @@ export  async function login(cuenta, clave) {
 }
 
 
+
+
 export async function loginRegistrarUsuario(numero, numeroInterno, cuenta, coope) {
   console.log("Registrando usuario con número:", numero, "numero interno: ", numeroInterno,", cuenta:", cuenta, "y coope: ", coope);
   if (numero.length > 10 && numeroInterno > 10){
@@ -345,6 +347,64 @@ export async function loginRegistrarUsuario(numero, numeroInterno, cuenta, coope
   }
 }
 
+export async function confirmarPedidoDeFondos(numero, numeroInterno, cuenta, tipo, cantidad, fechaAcreditacion, cbu, idBanco, coope) {
+  console.log(":::::::::::::::::::::::::: confirmarPedidoDeFondos() :::::::::::::::::::::::::::::::::::::::")
+  console.log("Confirmando operación para el usuario con número:", numero, "numero interno: ", numeroInterno,", cuenta:", cuenta, "tipo: ", tipo," Cantidad", cantidad, "Fecha:", fechaAcreditacion,  " cbu: ", cbu,  " Banco: ", idBanco," coope: ", coope);
+  if (numero.length > 10 && numeroInterno > 10){
+    numero = 0
+  }
+
+  try {
+   
+    
+    const res = await fetch(`${API_URL}/api/auth/registrar-pedido-dinero`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ numero, numeroInterno , cuenta, tipo, cantidad, fechaAcreditacion, cbu, idBanco, coope }),
+    });
+   
+    const data = await res.json();
+    if (data.code === 'OK' && data.status === 200 ){
+      console.log("Operación registrada con éxito.");
+      return true
+    } else {
+       return false
+    }
+
+    return data;
+  } catch (error) {
+    console.error('Error al registrar el usuario:', );
+    throw error;
+  }
+}
+
+
+export async function traerCbusPorCuenta(numero, numeroInterno, cuenta, coope) {
+ 
+  console.log("Traer Cbus:", numero, "numero interno: ", numeroInterno, ", cuenta:", cuenta, "coope: ", coope);
+
+  try {
+      const res = await fetch(`${API_URL}/api/pedidofondos/traer-cbus`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ numero, numeroInterno, cuenta, coope }),
+      });
+      console.log("📡 Estado de respuesta traerCbusPorCuenta:", res);
+      const data = await res.json();
+      return data
+     /* if (data.code === 'OK' && data.status === 200) {
+          console.log("Listado de Cbus por cuenta:", data);
+          return data;
+      } else {
+          console.warn("⚠️ Error en la respuesta de traerCbusPorCuenta:", data);
+          return false;
+      }*/
+  } catch (error) {
+      console.error('🛑 Error en traerCbusPorCuenta:', error);
+      throw error; // Lanza el error para que pueda ser manejado en el lugar donde se llama la función
+  }
+}
+
 
 
 export default  {
@@ -363,4 +423,6 @@ export default  {
   loginRegistrarUsuario,
   loginEsperarRespuestaUsuario,
   loginDesconectar,
+  confirmarPedidoDeFondos,
+  traerCbusPorCuenta
 };

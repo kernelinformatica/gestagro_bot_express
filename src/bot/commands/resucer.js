@@ -9,12 +9,6 @@ import apiCliente from '../../services/apiCliente.js';
 const { verificarUsuarioValido, obtenerResumenDeCereales } = apiCliente;
 import mensajesDefault from '../mensajes/default.js';
 const iconosNumericos = generarIconosNumericos(50);
-
-
-
-
-
-
 async function cargarMensajesCliente(coopeId) {
   const codigo = clientesCodigo[coopeId];
   if (!codigo) return mensajesDefault;

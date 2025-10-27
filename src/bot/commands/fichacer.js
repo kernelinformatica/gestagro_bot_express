@@ -65,11 +65,10 @@ export default async (sock, from, text, userState) => {
       return;
     }
     console.log('✅ Parámetros extraídos:', { partes });
-    //const cereal = partes[1];
-    const cereal = partes[5];
-    const clase = partes[3];
-    const cosechaRaw = partes[4];
-   
+    const cereal = partes[4];
+    const clase = partes[2];
+    const cosechaRaw = partes[3];
+    console.log('✅ variables para enviar ', { cereal, clase, cosechaRaw });
 
     const cosecha = obtenerCosecha(coope, cosechaRaw);
 

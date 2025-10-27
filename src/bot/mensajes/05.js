@@ -1,4 +1,6 @@
 import { coope as obj, config as conf, info } from '../config.js';
+
+
 const cli = obj["05"]
 const mensajes = {
     gestagro: '🤖 👋 Hola soy el asistente virtual de ' + cli.nombreBot + ', te cuento quién soy:\n\nSoy un sistema pensado y diseñado para el sector agropecuario, más específicamente para Cooperativas Agrícolas y Acopio de Granos.\n\nEscribi *menu*  para conocer los comandos que tengo disponibles.',
@@ -34,5 +36,15 @@ const mensajes = {
     registro_error_general : '😢 Ocurrió un error inesperado durante el registro. Por favor, intenta nuevamente más tarde.' ,
     registro_clave_invalida: '🔑 ❌ La clave ingresada no es válida. Asegúrate de que la clave no contenga espacios. Por favor, ingresa una clave válida.\n\nSi no recuerda su clave, póngase en contacto con la Cooperativa.\n\nAhora ingresá nuevamente el nro de cuenta.',
     felicitaciones_registro : '✅ 🎉Felicitaciones !!! \n\n👍 El registro fue exitoso. Ahora puedes usar el bot.\n\n🤖 Ecribí *menu* para conocer los comandos que tengo disponibles.',
+    // solicitud de dinero
+    sf_pregunta_fecha_acreditacion: "¿Qué fecha de acreditación prefiere?, ingrese YYYY-MM-DD' (por ejemplo, 2025-10-22).",
+    sf_pregunta_cantidad_dinero: "¿Cuál es el monto que desea solicitar?\n\n_Por favor, ingrese la cantidad en pesos argentinos (ARS)._",
+    sf_ingrese_cantidad_valida: "⚠️ La cantidad ingresada no es válida.\n\n_Por favor, ingrese un monto numérico positivo en pesos argentinos (ARS)._",
+    sf_ingrese_una_opcion_valida : 'Por favor, seleccione una opción válida (A, B, C).',
+    sf_solicitud_procesando :"⏳ Procesando su solicitud, por favor espere...",
+    sf_solicitud_exito: "✅ Su solicitud ha sido procesada con éxito:\n",
+    sf_solicitud_error : `❌ Su solicitud no se pudo procesar debido a un error inesperado, inténte nuevamente más tarde.\n\nEscriba *"menu"* para volver al menú principal.`,
+    sf_solicitud_condiciones: "📝 _Tenga en cuenta que las solicitudes de dinero, se tramitarán y se resolverán en un lapso máximo de 48 hs, desde el día que se realizó el pedido._",
+    sf_salida_flujo_transferencias : '✅ Has salido del menu PEDIDO DE FONDOS. Escribe *"menu"* para volver al menú principal.'
 }
 export default mensajes ;
