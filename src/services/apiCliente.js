@@ -320,8 +320,6 @@ export  async function login(cuenta, clave) {
 }
 
 
-
-
 export async function loginRegistrarUsuario(numero, numeroInterno, cuenta, coope) {
   console.log("Registrando usuario con número:", numero, "numero interno: ", numeroInterno,", cuenta:", cuenta, "y coope: ", coope);
   if (numero.length > 10 && numeroInterno > 10){
@@ -347,37 +345,88 @@ export async function loginRegistrarUsuario(numero, numeroInterno, cuenta, coope
   }
 }
 
-export async function confirmarPedidoDeFondos(numero, numeroInterno, cuenta, tipo, cantidad, fechaAcreditacion, cbu, idBanco, coope) {
+export async function confirmarPedidoDeFondos(numero, numeroInterno, cuenta, tipo, sucursal, cantidad, fechaAcreditacion, cbu, idBanco, idChequera, coope) {
   console.log(":::::::::::::::::::::::::: confirmarPedidoDeFondos() :::::::::::::::::::::::::::::::::::::::")
-  console.log("Confirmando operación para el usuario con número:", numero, "numero interno: ", numeroInterno,", cuenta:", cuenta, "tipo: ", tipo," Cantidad", cantidad, "Fecha:", fechaAcreditacion,  " cbu: ", cbu,  " Banco: ", idBanco," coope: ", coope);
+  
+
   if (numero.length > 10 && numeroInterno > 10){
     numero = 0
   }
+  if (cbu == null || cbu == undefined) {
+    cbu = "0"
+  }
+  if (idBanco == null || idBanco == undefined) {
+    idBanco = 1
+  }
+  if (sucursal == null || sucursal == undefined) {
+    sucursal = 0
+  }
+
+  console.log(":::::::::::::::::::::::::: Confirmando operación para el usuario con número:", numero, "numero interno: ", numeroInterno,", cuenta:", cuenta, "tipo: ", tipo, "Sucursal: " , sucursal, " Cantidad", cantidad, "Fecha:", fechaAcreditacion,  " cbu: ", cbu,  " Banco: ", idBanco," coope: ", coope);
+  
 
   try {
-   
-    
-    const res = await fetch(`${API_URL}/api/auth/registrar-pedido-dinero`, {
+    const res = await fetch(`${API_URL}/api/pedidofondos/registrar-pedido-dinero`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ numero, numeroInterno , cuenta, tipo, cantidad, fechaAcreditacion, cbu, idBanco, coope }),
+      body: JSON.stringify({ numero, numeroInterno , cuenta, tipo, sucursal, cantidad, fechaAcreditacion, cbu, idBanco, idChequera, coope }),
     });
    
     const data = await res.json();
-    if (data.code === 'OK' && data.status === 200 ){
-      console.log("Operación registrada con éxito.");
-      return true
+    console.log("📦 :::::::::::::::::: > Respuesta de la API confirmarPedidoDeFondos:", data);
+    console.log("📡 Estado de respuesta confirmarPedidoDeFondos:", data.message.code, data.message.status);
+    if (data.message.code === 'OK' && (data.message.status === 200 || data.message.status === 201 )){
+      return data.message;
     } else {
        return false
     }
 
-    return data;
+   
   } catch (error) {
-    console.error('Error al registrar el usuario:', );
+    console.log('Error al registrar el usuario:', error);
     throw error;
   }
 }
 
+
+
+
+export async function traerTransacciones(numero, numeroInterno, cuenta, coope) {
+  try {
+      const res = await fetch(`${API_URL}/api/pedidofondos/traer-transacciones`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ numero, numeroInterno, cuenta, coope }),
+      });
+    
+      const data = await res.json();
+      console.log("📡 Estado de respuesta traerTransacciones:", data);
+      return data
+    
+  } catch (error) {
+      console.error('🛑 Error en traerTransacciones:', error);
+      throw error; // Lanza el error para que pueda ser manejado en el lugar donde se llama la función
+  }
+}
+
+export async function traerSucursales(numero, numeroInterno, cuenta, coope) {
+  console.log(":: Traer Transacciones:", numero, "numero interno: ", numeroInterno, ", cuenta:", cuenta, "coope: ", coope);
+
+  try {
+      const res = await fetch(`${API_URL}/api/pedidofondos/traer-sucursales`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ numero, numeroInterno, cuenta, coope }),
+      });
+      console.log("📡 Estado de respuesta traerSucursales:", res);
+      const data = await res.json();
+      return data
+    
+  } catch (error) {
+      console.error('🛑 Error en traerSucursales:', error);
+      throw error; // Lanza el error para que pueda ser manejado en el lugar donde se llama la función
+  }
+}
 
 export async function traerCbusPorCuenta(numero, numeroInterno, cuenta, coope) {
  
@@ -424,5 +473,6 @@ export default  {
   loginEsperarRespuestaUsuario,
   loginDesconectar,
   confirmarPedidoDeFondos,
-  traerCbusPorCuenta
+  traerCbusPorCuenta,
+  traerTransacciones
 };

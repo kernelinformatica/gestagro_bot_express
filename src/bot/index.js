@@ -9,7 +9,7 @@ import fs from 'fs';
 import { fileURLToPath } from 'url';
 // 🧠 Módulos locales
 import userStates from './userStates.js';
-import { verificarUsuarioValido, loginRegistrarUsuario, login, loginValidarCuenta, loginEsperarRespuestaUsuario, confirmarPedidoDeFondos, traerCbusPorCuenta } from '../services/apiCliente.js';
+import { verificarUsuarioValido, loginRegistrarUsuario, login, loginValidarCuenta, loginEsperarRespuestaUsuario, confirmarPedidoDeFondos, traerSucursales, traerCbusPorCuenta, traerTransacciones } from '../services/apiCliente.js';
 import { esNumeroWhatsApp, getCleanId, extraerNumero } from './utils.js';
 import { manejarRegistroUsuario } from './registroUsuario.js';
 
@@ -770,6 +770,7 @@ export async function startBot() {
         if (userState.estado === 'preguntar_tipo_transferencia' ||
             userState.estado === 'preguntar_cantidad_dinero' ||
             userState.estado === 'preguntar_cbu' ||
+            userState.estado === 'preguntar_sucursal' ||
             userState.estado === 'preguntar_fecha_acreditacion' ||
             userState.estado === 'confirmar_solicitud') {
           await handlePedidoDeFondos(sock, from, text, userState, numero, numeroInterno,cuenta);
@@ -939,41 +940,66 @@ async function handlePedidoDeFondos(sock, from, text, userState, numeroCelu, num
   const imagen = fs.readFileSync(config.clienteRobotImg);
   let msgCli = await cargarMensajesCliente(parseInt(config.cliente, 10));
   
-    // Comando "salir" para salir del flujo
-    if (text.toLowerCase() === '4' || text.toLowerCase() === 'salir') {
-      console.log('🔙 El usuario ha salido del flujo de transferencias.');
-      userStates.setState(from, { estado: null, bloqueado: false }); // Limpiar el estado
-      await sock.sendMessage(from, { text: msgCli.sf_salida_flujo_transferencias });
-      return;
-    }
+   
 
 
   if (userState.estado === 'preguntar_tipo_transferencia') {
     console.log('📥 Comando recibido para tipo de transferencia:', text);
+    let tra= "";
+    
+    console.log('📍 Punto de control en preguntar_tipo_transferencia - Antes de traerTransacciones-> ',numeroCelu, numeroInterno, cuenta, config.cliente)  ;
+    const transacciones = await traerTransacciones(numeroCelu, numeroInterno, cuenta, config.cliente);
+    // Mapeo de transacciones a un objeto de opciones
+    let opciones = {};
+    tra = transacciones.message.transacciones;
 
-    // Mapeo de opciones específicas
-    const opciones = {
-      1: 'Transferencia',
-      2: 'Cheque',
-      3: 'Cheque Electrónico',
-      4: 'Salir',
-      
-    };
+    if (tra && tra.length > 0) {
+      opciones = tra.reduce((acc, transaccion, index) => {
+        acc[index + 1] = {
+          descripcion: transaccion.descripcion, // Descripción para mostrar al usuario
+          idTransaccion: transaccion.idTransaccion, // ID para enviar al backend
+        };
+        return acc;
+      }, {});
+   
 
-    const seleccion = opciones[tipo]; // Convertir a minúscula para evitar errores
+      // Agregar la opción de "Salir"
+
+      opciones[tra.length + 1] = 'Salir';
+    } else {
+      console.log('⚠️ No se encontraron transacciones disponibles.');
+    }
+    let comSalirNum = tra.length + 1
+ // Comando "salir" para salir del flujo
+  
+ 
+    const seleccion = opciones[tipo];
+    
+    
     if (!seleccion) {
       console.log('❌ Comando inválido:', text);
     //  await sock.sendMessage(from, { text: msgCli.sf_ingrese_una_opcion_valida });
       return;
     }
-    console.log('✅ Tipo de operación seleccionada:', seleccion);
+    const descripcionSeleccionada = seleccion.descripcion;
+    const idTransaccionSeleccionada = seleccion.idTransaccion;
+    console.log('✅ ID de transacción seleccionada:', idTransaccionSeleccionada, descripcionSeleccionada);
     
-    
-    userStates.setState(from, { ...userState, bloqueado: true, tipoTransferencia: seleccion, comandoActual: '7',  estado: 'preguntar_cantidad_dinero' });
-    await sock.sendMessage(from, { text: `🤖 Tipo de operación seleccionada:\n ${seleccion}.` });
+    if (seleccion === 'Salir' ) {
+      console.log('🔙 El usuario ha salido del flujo de transferencias.');
+      userStates.setState(from, { estado: null, bloqueado: false }); // Limpiar el estado
+      await sock.sendMessage(from, { text: msgCli.sf_salida_flujo_transferencias });
+      return;
+    }
+    userStates.setState(from, { ...userState, bloqueado: true, 
+      tipoTransferencia: descripcionSeleccionada, 
+      tipoTransferenciaCodigo:idTransaccionSeleccionada, 
+      comandoActual: '7',  estado: 'preguntar_cantidad_dinero' });
+    await sock.sendMessage(from, { text: `🤖 Tipo de operación seleccionada:\n ${descripcionSeleccionada}.` });
     await sock.sendMessage(from, { text: msgCli.sf_pregunta_cantidad_dinero}); ;
     return;
   }
+
 
   if (userState.estado === 'preguntar_cantidad_dinero') {
     console.log('📥 Comando recibido para cantidad de dinero:', text);
@@ -987,9 +1013,10 @@ async function handlePedidoDeFondos(sock, from, text, userState, numeroCelu, num
     }
   
     // Manejo de cantidad de dinero
-    if (userState.tipoTransferencia === 'Transferencia') {
+    if (userState.tipoTransferencia === 'Transferencias Bancarias' || userState.tipoTransferencia === 'Transferencia Bancaria' || userState.tipoTransferencia === 'Transferencia' || userState.tipoTransferencia === 'Transferencias') {
       
       let cbus = await traerCbusPorCuenta(numeroCelu, numeroInterno, cuenta, config.cliente);
+      console.log('📍 Punto de control en preguntar_cbu - Antes de traerCbusPorCuenta -> ', numeroCelu, numeroInterno, cuenta, config.cliente);
       if (cbus?.message?.cbu?.length > 0) {
         let cbus_msg = "💳 CBUS asociados a SU cuenta:\n\n";
         cbus_msg += `Seleccione la cuenta destino para la transferencia ingresando el número correspondiente:\n\n`;
@@ -1019,10 +1046,86 @@ async function handlePedidoDeFondos(sock, from, text, userState, numeroCelu, num
       }
     }
   
+    if (userState.tipoTransferencia === 'Cheque' || userState.tipoTransferencia === 'Cheques') {
+
+      console.log('📍 Punto de control en preguntar_sucursal - Antes de traerSucursales -> ', numeroCelu, numeroInterno, cuenta, config.cliente);
+
+      let sucursales = await traerSucursales(numeroCelu, numeroInterno, cuenta, config.cliente);
+  
+      if (sucursales?.message?.sucursales?.length > 0) {
+        let suc_msg = "🏦 Sucursales disponibles:\n\n";
+        suc_msg += "Seleccione la sucursal donde retirará el cheque ingresando el número correspondiente:\n\n";
+  
+        sucursales.message.sucursales.forEach((item, index) => {
+          suc_msg += `✅ ${index + 1} - ${item.nombre}\n`;
+        });
+  
+        console.log('✅ Sucursales obtenidas correctamente.', suc_msg);
+  
+        // Enviar la lista de sucursales al usuario
+        await sock.sendMessage(from, { text: suc_msg });
+  
+        // Actualizar el estado del usuario para esperar la selección de la sucursal
+        userStates.setState(from, {
+          ...userState,
+          bloqueado: true,
+          cantidadDinero: cantidad,
+          estado: 'preguntar_sucursal',
+          sucursales: sucursales.message.sucursales, // Guardar la lista de sucursales en el estado
+        });
+        return;
+      } else {
+        console.warn('⚠️ No se encontraron sucursales disponibles.');
+        await sock.sendMessage(from, { text: '❌ No se encontraron sucursales disponibles para el retiro del cheque.' });
+        return;
+      }
+    }
+
+    
+    
+
+
+
+
+
+  
     // Actualizar el estado del usuario para avanzar al siguiente paso
     userStates.setState(from, { ...userState, bloqueado: true, cantidadDinero: cantidad, estado: 'preguntar_fecha_acreditacion' });
     await sock.sendMessage(from, { text: `🤖 Ha Ingresado: $ ${cantidad}.` });
     await sock.sendMessage(from, { text: msgCli.sf_pregunta_fecha_acreditacion });
+    return;
+  }
+
+
+
+
+  if (userState.estado === 'preguntar_sucursal') {
+    console.log('📥 Comando recibido para selección de sucursal:', text);
+  
+    const seleccion = parseInt(text.trim(), 10); // Convertir la selección a número
+    const sucursales = userState.sucursales;
+    console.log('📍 Punto de control en preguntar_sucursal - Seleccionada -> ', seleccion);
+    if (isNaN(seleccion) || seleccion < 1 || seleccion > sucursales.length) {
+      await sock.sendMessage(from, { text: '❌ Opción inválida. Por favor, seleccione un número de la lista.' });
+      return;
+    }
+  
+    // Obtener la sucursal seleccionada
+    const sucursalSeleccionada = sucursales[seleccion - 1];
+    console.log('✅ Sucursal seleccionada:', sucursalSeleccionada);
+  
+    // Guardar la sucursal seleccionada en el estado del usuario
+    userStates.setState(from, {
+      ...userState,
+      bloqueado: true,
+      sucursalSeleccionadaNombre: sucursalSeleccionada.nombre,
+      sucursalSeleccionadaCodigo: sucursalSeleccionada.idSucursal,
+      estado: 'preguntar_fecha_acreditacion', // Continuar con el flujo
+    });
+  
+    await sock.sendMessage(from, {
+      text: `✅ Ha seleccionado la sucursal: ${sucursalSeleccionada.nombre}.\n\nPor favor, ingrese la fecha de acreditación en el formato "YYYY-MM-DD".`,
+    });
     return;
   }
   
@@ -1112,40 +1215,54 @@ async function handlePedidoDeFondos(sock, from, text, userState, numeroCelu, num
 
   if (userState.estado === 'confirmar_solicitud') {
 
-    console.log('📥 Comando recibido para confirmar solicitud:', userState.tipoTransferencia, userState.cantidadDinero, userState.fechaAcreditacion);
     let transaccion = false;
     const respuesta = text.trim().toLowerCase();
+    let conSucu = ""
+    let codSucu = 0
+    let sep = "---------------------------------------"
+    console.log('📍 :: Punto de control en confirmar_solicitud - Antes de confirmarPedidoDeFondos ->', numeroCelu, numeroInterno, cuenta, userState.tipoTransferenciaCodigo, codSucu, userState.cantidadDinero, userState.fechaAcreditacion, config.cliente);
+    if (userState.sucursalSeleccionadaCodigo){
+      conSucu = `\n- Sucursal de Cobro: ${userState.sucursalSeleccionadaNombre}`
+      codSucu = userState.sucursalSeleccionadaCodigo
+    }
     if (respuesta === 'sí' || respuesta === 'si') {
       //numero, numeroInterno, cuenta, tipo, cantidad, fechaAcreditacion, coope)
       await sock.sendMessage(from, {
         text: msgCli.sf_solicitud_procesando,
       });
-      transaccion = await confirmarPedidoDeFondos(numeroCelu, numeroInterno, cuenta, userState.tipoTransferencia, userState.cantidadDinero, userState.fechaAcreditacion, userState.cbuSeleccionado, userState.bancoSeleccionadoCodigo,  config.cliente);
-      if (transaccion == true){
+      let idChequera = 0;
+      transaccion = await confirmarPedidoDeFondos(numeroCelu, numeroInterno, cuenta, userState.tipoTransferenciaCodigo, codSucu,userState.cantidadDinero, userState.fechaAcreditacion, userState.cbuSeleccionado, userState.bancoSeleccionadoCodigo,  idChequera, config.cliente);
+      if (transaccion.code === 'OK' && (transaccion.status === 200  || transaccion.status === 201)){
         let msg_banco = ""
-        if (userState.tipoTransferencia === 'Transferencia') {
-          msg_banco = "\n"+userState.bancoSeleccionado+"\nCBU: **********"+userState.cbuSeleccionado.slice(-5)+"\n"
+        if (userState.tipoTransferencia === 'Transferencias Bancarias' || userState.tipoTransferencia === 'Transferencias'){ 
+          msg_banco = "- "+userState.bancoSeleccionado+"\n- CBU: **********"+userState.cbuSeleccionado.slice(-5)+"\n"
         }else{
           msg_banco = ""
         }
-        /*bancoSeleccionado: 'BANCO DE LA NACION ARGENTINA',
-        bancoSeleccionadoCodigo: 11,
-        cbuSeleccionado: '1234567891022396898974',
-        cbuIdPadron: 1374*/
-
-        let sep = "---------------------------------------"
-        
+        let sep = "\n--------------------------------------------------\n"
+        const nroOrdenFmt = String(transaccion.nro_orden).padStart(10, '0');
         if (config.mensajesConLogo === 'S') {
-          await sock.sendMessage(from, { image: imagen, caption:  msgCli.sf_solicitud_exito+`${msg_banco}\n- Tipo de operación: ${userState.tipoTransferencia}\n- Cantidad: $ ${userState.cantidadDinero}\n- Fecha de acreditación: ${userState.fechaAcreditacion}\n\nPuede consultar el estado de sus operaciones ingresando el comando *'operaciones'*\n\n${msgCli.sf_solicitud_condiciones}\n\n🤖 👍 Gracias por usar nuestro servicio.\n\n_${config.clienteNombre}_\n\n\Escriba *'menu'* para volver al menu principal` });
+          if (transaccion.status === 201){
+            await sock.sendMessage(from, { image: imagen, caption:  transaccion.respuesta+"\n"});
+      
+          }else  {
+            await sock.sendMessage(from, { image: imagen, caption:  transaccion.respuesta+"\n"+`${sep}- Nro de Orden: ${nroOrdenFmt}\n${msg_banco}- Operación: ${userState.tipoTransferencia}${conSucu}\n- Cantidad: $ ${userState.cantidadDinero}\n- Fecha de acreditación: ${userState.fechaAcreditacion}${sep}\nPuede consultar el estado de sus operaciones ingresando el comando *'operaciones'*\n\n${msgCli.sf_solicitud_condiciones}\n\n🤖 👍 Gracias por usar nuestro servicio.\n\n_${config.clienteNombre}_\n\n\Escriba *'menu'* para volver al menu principal` });
+          }
+        } else {
+          if (transaccion.status === 201){
+            await sock.sendMessage(from, {
+              text: transaccion.respuesta+"\n"
+            });
         } else {
           await sock.sendMessage(from, {
-            text: msgCli.sf_solicitud_exito+`${msg_banco}\n- Tipo de operación: ${userState.tipoTransferencia}\n- Cantidad: $ ${userState.cantidadDinero}\n- Fecha estimada de acreditación: $ ${userState.fechaAcreditacion}\n\nPuede consultar el estado de sus operaciones ingresando el comando *'operaciones'*\n\n${msgCli.sf_solicitud_condiciones}\n\n 🤖 👍 Gracias por usar nuestro servicio.\n\n_${config.clienteNombre}_\n\n\Escriba *'menu'* para volver al menu principal` 
+            text: transaccion.respuesta+"\n"+`${sep}- Nro de Orden: ${str(nroOrdenFmt).zfill(10)}\n${msg_banco}- Operación: ${userState.tipoTransferencia}${conSucu}\n- Cantidad: $ ${userState.cantidadDinero}\n- Fecha de acreditación: ${userState.fechaAcreditacion}${sep}\nPuede consultar el estado de sus operaciones ingresando el comando *'operaciones'*\n\n${msgCli.sf_solicitud_condiciones}\n\n 🤖 👍 Gracias por usar nuestro servicio.\n\n_${config.clienteNombre}_\n\n\Escriba *'menu'* para volver al menu principal` 
           });
+        }
         }
 
 
        
-        } else {
+      } else {
           await sock.sendMessage(from, {
             text: msgCli.sf_solicitud_error,
           });
