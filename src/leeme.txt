@@ -6,3 +6,7 @@ journalctl -u gestagro_bot.service --no-pager -n 50
 
 MIGRAR  WHISKEYSOCKETS/baileys  2025
 npm install @whiskeysockets/baileys@7.0.0-rc.2
+
+
+ver logs:
+tail -f /varlog/gestagro_sola_bot.log

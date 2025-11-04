@@ -1,7 +1,8 @@
-sudo systemctl start gestagro_bot.service
-sudo systemctl stop gestagro_bot.service
-sudo systemctl status gestagro_bot.service
-sudo systemctl restart gestagro_bot.service
+levantar logs en linux
+tail -f /var/log/gestagro_coopaz.log
+journalctl -u gestagro_bot.service --no-pager -n 50
 
-journalctl -u gestagro_bot.service -f
-tail -f /var/log/gestagro_bot.log
+
+
+MIGRAR  WHISKEYSOCKETS/baileys  2025
+npm install @whiskeysockets/baileys@7.0.0-rc.2

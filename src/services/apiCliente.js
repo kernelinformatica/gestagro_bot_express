@@ -454,6 +454,27 @@ export async function traerCbusPorCuenta(numero, numeroInterno, cuenta, coope) {
   }
 }
 
+export async function testServicio() {
+  try {
+    const res = await fetch(`${API_URL}/api/chaty/dummy`, {
+      method: 'GET',
+      headers: { 'Content-Type': 'application/json' },
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      console.log('✅ Servicio operativo:', data.message);
+      return { status: 'OK', message: data.message };
+    } else {
+      console.warn('⚠️ Servicio no operativo. Código de estado:', res.status);
+      return { status: 'ERROR', message: `Código de estado: ${res.status}` };
+    }
+  } catch (error) {
+    console.error('🛑 Error al verificar el servicio:', error.message);
+    return { status: 'ERROR', message: 'No se pudo conectar al servicio.' };
+  }
+}
+
 
 
 export default  {
@@ -474,5 +495,6 @@ export default  {
   loginDesconectar,
   confirmarPedidoDeFondos,
   traerCbusPorCuenta,
-  traerTransacciones
+  traerTransacciones, 
+  testServicio
 };

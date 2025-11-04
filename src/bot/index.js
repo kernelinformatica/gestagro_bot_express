@@ -45,27 +45,28 @@ import { config } from './config.js';
 
 // 🧾 Logger
 const logger = pino({ level: 'debug' });
-
-
-
-
-
-
-
 let sockInstance = null;
 let qrActual = null;
+let botStatus = 'starting'; // Estados posibles: 'running', 'stopped', 'error'
 
 export async function startBot() {
+  try {
+  botStatus = 'starting';
   const { state, saveCreds } = await useMultiFileAuthState('auth');
   const { version } = await fetchLatestBaileysVersion(); // Obtener la última versión de WhatsApp compatible
   const sock = makeWASocket({
     auth: state,
     logger,
     version,
-    printQRInTerminal: true, // Imprime el QR directamente en la terminal
+
+    //browser: ['Ubuntu', 'Baileys', 'Chrome', '22.04.4'],
+ 
   });
 
+
+ 
   sockInstance = sock;
+  botStatus = 'running';
 
   // Guardar credenciales
   sock.ev.on('creds.update', saveCreds);
@@ -80,9 +81,11 @@ export async function startBot() {
       console.log('🔐 Escaneá este QR para vincular:');
       qrcode.generate(qr, { small: true });
     }
-
-
+    botStatus = 'running';
+    
     if (connection === 'close') {
+      botStatus = 'stopped';
+      console.log('❌ Bot detenido.');
       let reasonCode = DisconnectReason.connectionClosed;
 
       if (lastDisconnect?.error?.output?.statusCode !== undefined) {
@@ -102,7 +105,8 @@ export async function startBot() {
     }
 
     if (connection === 'open') {
-      console.log('✅ ¡Conectado con WhatsApp!');
+      botStatus = 'running'; 
+      console.log('✅ ¡Conectado con WhatsApp! (Status Bot: '+botStatus+")");
     }
     const logoBuffer = fs.readFileSync(config.clienteLogo);
   });
@@ -133,9 +137,11 @@ export async function startBot() {
       const from = msg.key.remoteJid ?? '';
 
 
-      //console.log('📥 Mensaje recibido :', msg);
+      
 
-      const text = normalizeText(msg);
+      const text = normalizeText(msg, true);
+      const textClave = normalizeText(msg,false);
+      
 
 
       // console.log(`📩 Mensaje recibido de ${from}: ${text}: ${type}`);
@@ -249,7 +255,7 @@ export async function startBot() {
           }
       
           console.log('⏳ Esperando clave del usuario...');
-          const claveResponse = text.trim(); // Usar el texto ingresado como clave
+          const claveResponse = textClave.trim()//text.trim(); // Usar el texto ingresado como clave
           console.log('📨 Clave recibida:', claveResponse);
       
           // Bloquear el estado para evitar múltiples mensajes
@@ -318,11 +324,6 @@ export async function startBot() {
 
       const coope = id
       const coopeNumero = parseInt(coope, 10);
-      console.log("============================= ACA VALIDO EL USUARIO: " + cta + "-" + text + "-" + coope + "-" + config.cliente + "-" + coopeNumero + " =========================================")
-
-      
-
-
       if (config.apiPropietaria === true) {
         if (config.cliente != coope) {
           console.log("😢 Cliente no autorizado")
@@ -355,267 +356,7 @@ export async function startBot() {
 
       console.log('📦 -------------------------> Usuario:', numero + "| Cliente: " + coope + " |  Cuenta: "+ cuenta + " | Nombre Socio: " + nombreSocio + " <-----------------------------------");
 
-      /*const comandosPorCliente = {
-        '01': {
-          menu,
-          'menu': menu,
-          '0': menu,
-          'hola': menu,
-          info,
-          'info': info,
-          '1': info,
-          pesos,
-          'pesos': pesos,
-          '2': pesos,
-          pesosresumen,
-          'resumen': pesosresumen,
-          '10': pesosresumen,
-          dolar,
-          'dolar': dolar,
-          '3': dolar,
-          'resumendolar': dolarresumen,
-          '11': dolarresumen,
-          cereales: resucer,
-          '4': resucer,
-          f: fichacereal,
-          '55': fichacereal,
-          r: ficharomaneos,
-          '56': ficharomaneos,
-          disponible,
-          '5': disponible,
-          futuro,
-          '6': futuro,
-          cotizaciones,
-          '7': cotizaciones,
-          salir,
-          '8': salir,
-          'salir': salir,
-
-          reiniciarempresa,
-          '99': reiniciarempresa
-        },
-        '03': {
-
-          menu,
-          'menu': menu,
-          '0': menu,
-          'hola': menu,
-          info,
-          'info': info,
-          '1': info,
-          pesos,
-          'pesos': pesos,
-          '2': pesos,
-          pesosresumen,
-          'resumen': pesosresumen,
-          '10': pesosresumen,
-          dolar,
-          'dolar': dolar,
-          '3': dolar,
-          'resumendolar': dolarresumen,
-          '11': dolarresumen,
-          cotizaciones,
-          '4': cotizaciones,
-          cotizaciones,
-          '5': cotizaciones,
-
-          reiniciarempresa,
-          '99': reiniciarempresa
-        },
-        '05': {
-          menu,
-          'menu': menu,
-          '0': menu,
-          'hola': menu,
-          info,
-          'info': info,
-          '1': info,
-          pesos,
-          'pesos': pesos,
-          '2': pesos,
-          pesosresumen,
-          'resumen': pesosresumen,
-          '10': pesosresumen,
-          cereales: resucer,
-          '3': resucer,
-          f: fichacereal,
-          '55': fichacereal,
-          r: ficharomaneos,
-          '56': ficharomaneos,
-          pizarra,
-          '4': pizarra,
-          cotizaciones,
-          '5': cotizaciones,
-          contacto,
-          '6': contacto,
-          solicitarDinero,
-          '7': solicitarDinero,
-          salir,
-          '8': salir,
-          'salir': salir,
-          subirmercado,
-          '98': subirmercado,
-          reiniciarempresa,
-          '99': reiniciarempresa
-        },
-        '06': {
-          menu,
-          'menu': menu,
-          '0': menu,
-          'hola': menu,
-          info,
-          'info': info,
-          '1': info,
-          pesos,
-          'pesos': pesos,
-          '2': pesos,
-          pesosresumen,
-          'resumen': pesosresumen,
-          '10': pesosresumen,
-          cereales: resucer,
-          '3': resucer,
-          f: fichacereal,
-          '55': fichacereal,
-          r: ficharomaneos,
-          '56': ficharomaneos,
-          cotizaciones,
-          '4': cotizaciones,
-          reiniciarempresa,
-          '99': reiniciarempresa
-        },
-        '11': {
-          menu,
-          'menu': menu,
-          '0': menu,
-          'hola': menu,
-          pesos,
-          'pesos': pesos,
-          '1': pesos,
-          pesosresumen,
-          'resumen': pesosresumen,
-          '10': pesosresumen,
-          dolar,
-          'dolar': dolar,
-          '2': dolar,
-          'dolarresumen': dolarresumen,
-          '11': dolarresumen,
-          cereales: resucer,
-          '3': resucer,
-          f: fichacereal,
-          '55': fichacereal,
-          r: ficharomaneos,
-          '56': ficharomaneos,
-          disponible,
-          '4': disponible,
-          futuro,
-          '5': futuro,
-          cotizaciones,
-          '6': cotizaciones,
-          contacto,
-          '7': contacto,
-          salir,
-          '8': salir,
-          'salir': salir,
-          reiniciarempresa,
-          '99': reiniciarempresa
-        },
-        '12': {
-          menu,
-          'menu': menu,
-          '0': menu,
-          'hola': menu,
-          pesos,
-          'pesos': pesos,
-          '1': pesos,
-          pesosresumen,
-          'resumen': pesosresumen,
-          '10': pesosresumen,
-          dolar,
-          'dolar': dolar,
-          '2': dolar,
-          'resumendolar': dolarresumen,
-          '11': dolarresumen,
-          cereales: resucer,
-          '3': resucer,
-          f: fichacereal,
-          '55': fichacereal,
-          r: ficharomaneos,
-          '56': ficharomaneos,
-          disponible,
-          '4': disponible,
-          futuro,
-          '5': futuro,
-          cotizaciones,
-          '6': cotizaciones,
-          contacto,
-          '7': contacto,
-          reiniciarempresa,
-          '99': reiniciarempresa
-        },
-        '29': {
-          menu,
-          'menu': menu,
-          '0': menu,
-          'hola': menu,
-          info,
-          'info': info,
-          '1': info,
-          pesos,
-          'pesos': pesos,
-          '2': pesos,
-          pesosresumen,
-          'resumen': pesosresumen,
-          '10': pesosresumen,
-          dolar,
-          'dolar': dolar,
-          '3': dolar,
-          'resumendolar': dolarresumen,
-          '11': dolarresumen,
-          cereales: resucer,
-          '4': resucer,
-          f: fichacereal,
-          '55': fichacereal,
-          r: ficharomaneos,
-          '56': ficharomaneos,
-          cotizaciones,
-          '5': cotizaciones,
-          contacto,
-          '6': contacto,
-          reiniciarempresa,
-          '99': reiniciarempresa
-        },
-        'default': {
-          menu,
-          '0': menu,
-          info,
-          '1': info,
-          pesos,
-          'pesos': pesos,
-          '2': pesos,
-          pesosresumen,
-          'resumen': pesosresumen,
-          '10': pesosresumen,
-          dolar,
-          'dolar': dolar,
-          '3': dolar,
-          'resumendolar': dolarresumen,
-          '11': dolarresumen,
-          cereales: resucer,
-          '4': resucer,
-          f: fichacereal,
-          '55': fichacereal,
-          r: ficharomaneos,
-          '56': ficharomaneos,
-          disponible,
-          '5': disponible,
-          futuro,
-          '6': futuro,
-          cotizaciones,
-          '7': cotizaciones,
-          reiniciarempresa,
-          '99': reiniciarempresa
-        }
-      };*/
+     
       const comandosPorCliente = {
         '05': {
           menu,
@@ -731,6 +472,72 @@ export async function startBot() {
           salir,
           '8': salir,
         },
+        '15':{
+          menu,
+          'menu': menu,
+          '0': menu,
+          'hola': menu,
+          pesos,
+          'pesos': pesos,
+          '1': pesos,
+          pesosresumen,
+          'resumen': pesosresumen,
+          '10': pesosresumen,
+          dolar,
+          'dolar': dolar,
+          '2': dolar,
+          'resumendolar': dolarresumen,
+          '11': dolarresumen,
+          cereales: resucer,
+          '3': resucer,
+          f: fichacereal,
+          '55': fichacereal,
+          r: ficharomaneos,
+          '56': ficharomaneos,
+          disponible,
+          '4': disponible,
+          futuro,
+          '5': futuro,
+          cotizaciones,
+          '6': cotizaciones,
+          contacto,
+          '7': contacto,
+          salir,
+          '8': salir,
+        },
+        '29':{
+          menu,
+          'menu': menu,
+          '0': menu,
+          'hola': menu,
+          pesos,
+          'pesos': pesos,
+          '1': pesos,
+          pesosresumen,
+          'resumen': pesosresumen,
+          '10': pesosresumen,
+          dolar,
+          'dolar': dolar,
+          '2': dolar,
+          'resumendolar': dolarresumen,
+          '11': dolarresumen,
+          cereales: resucer,
+          '3': resucer,
+          f: fichacereal,
+          '55': fichacereal,
+          r: ficharomaneos,
+          '56': ficharomaneos,
+          disponible,
+          '4': disponible,
+          futuro,
+          '5': futuro,
+          cotizaciones,
+          '6': cotizaciones,
+          contacto,
+          '7': contacto,
+          salir,
+          '8': salir,
+        },
         'default': {
           menu,
           'menu': menu,
@@ -764,9 +571,11 @@ export async function startBot() {
         return;
       }
 
-      // Manejo de comandos en estado "preguntar_tipo_transferencia"
+   
       if (userState.estado) {
-        console.log('📍 El usuario está en un flujo específico:', userState.estado);
+        if (config.pedidoDeFondosSn === "S") {
+          // Manejo de comandos en estado "preguntar_tipo_transferencia" de pedido de fondos
+          console.log('📍 El usuario está en un flujo específico:', userState.estado);
         if (userState.estado === 'preguntar_tipo_transferencia' ||
             userState.estado === 'preguntar_cantidad_dinero' ||
             userState.estado === 'preguntar_cbu' ||
@@ -775,6 +584,7 @@ export async function startBot() {
             userState.estado === 'confirmar_solicitud') {
           await handlePedidoDeFondos(sock, from, text, userState, numero, numeroInterno,cuenta);
           return;
+        }
         }
       }
       // Manejo de comandos en estado "pedido_fondos"
@@ -787,7 +597,7 @@ export async function startBot() {
 
       // Detectar y ejecutar comando
       const comandoDetectado = detectarComando(text, Object.keys(comandos));
-
+      console.log('🔍 Comandos disponibles:', Object.keys(comandos));
       if (comandoDetectado) {
         if ( comandoDetectado === '7'  ) {
           // Setear el estado del usuario a "solicitud_fondos"
@@ -809,12 +619,17 @@ export async function startBot() {
       await sock.sendMessage(getCleanId(from), { text: '❌ Ocurrió un error al procesar su solicitud. Intente nuevamente más tarde.' });
     }
   });
+} catch (error) {
+  botStatus = 'error'; // Actualizar el estado del bot a "error"
+  console.error('🛑 Error al iniciar el bot:', error);
+}
+
 }
 
 
 
 
-function normalizeText(msg) {
+function normalizeText(msg, toLowerCase = true) {
   console.dir(msg, { depth: null }); // Para depurar la estructura del mensaje
 
   const m = msg.message;
@@ -846,8 +661,15 @@ function normalizeText(msg) {
     m?.contactMessage?.displayName ?? // Nombre en contactos
     m?.locationMessage?.name ?? // Nombre en ubicaciones
     '';
-  //console.log('📨 :::: Texto extraído: "%s"', text);
-  return text.trim().toLowerCase();
+  
+ 
+  if (toLowerCase == false) {
+    return text.trim()
+  }else{
+    return text.trim().toLowerCase() ;
+  }
+  
+  //return text.trim().toLowerCase();
 }
 
 
@@ -1319,5 +1141,26 @@ async function cargarMensajesCliente(coopeId) {
   return fs.existsSync(ruta) ? (await import(ruta)).default : mensajes;
 }
 
+async function getConnectionStatus() {
+  if (sockInstance && sockInstance.ws) {
+    // Verificar el estado de la conexión WebSocket
+    switch (sockInstance.ws.readyState) {
+      case 0:
+        return 'connecting'; // Conexión en progreso
+      case 1:
+        return 'connected'; // Conexión establecida
+      case 2:
+        return 'closing'; // Conexión cerrándose
+      case 3:
+        return 'closed'; // Conexión cerrada
+      default:
+        return 'unknown'; // Estado desconocido
+    }
+  }
+  return 'disconnected'; // sockInstance no está inicializado o no tiene WebSocket
+}
 
-export default { startBot, sockInstance };
+function getBotStatus() {
+  return botStatus;
+}
+export default { startBot, sockInstance, getConnectionStatus, getBotStatus };
