@@ -39,11 +39,13 @@ export default async (sock, from, nroCuenta, text) => {
       userStates.clearState(from); // Limpiar el estado del usuario
       return;
     }
-   
-    let comando = '0';
+    let comando = '0'
     // Configurar el estado inicial del flujo
     if (config.cliente == "11") {
+     
       comando = '7';
+      await sock.sendMessage(from, { text: "😢 Por el momento esta opción no esta disponible, estamos trabajando para poder habilitarla a la brevedad.\nSepa disculpar las molestias ocasionadas.\n\n"+config.clienteNombre+"\n\n_Escriba *menu* para volver al menu principal._" });
+      return
     }else if (config.cliente == "05") {
       comando = '7';
         }
@@ -62,15 +64,9 @@ export default async (sock, from, nroCuenta, text) => {
     }
     
    
-    console.log(":::::::::::::: TRA: ", tra);
-    // Crear el mensaje inicial
-    /*let mensaje = '🤖 *Solicitud de Dinero*\n\n';
-    mensaje += '¿Qué tipo de operación desea realizar?\n';
-    mensaje += '1️⃣ Transferencia\n';
-    mensaje += '2️⃣ Cheque\n';
-    mensaje += '3️⃣ Cheque electrónico\n';
-    mensaje += '4️⃣ Salir\n';
-*/
+
+    
+
     // Crear el mensaje inicial
     let mensaje = '🤖 *Solicitud de Dinero*\n\n';
     mensaje += '¿Qué tipo de operación desea realizar?\n';
@@ -78,7 +74,7 @@ export default async (sock, from, nroCuenta, text) => {
     // Verificar si hay transacciones disponibles
     if (tra && tra.length > 0) {
       tra.forEach((transaccion, index) => {
-        mensaje += `${index + 1}️⃣ ${transaccion.descripcion}\n`;
+        mensaje += `${index+1}️⃣ ${transaccion.descripcion}\n`;
       });
       mensaje += `${tra.length + 1}️⃣ Salir\n`; // Agregar la opción de salir
     } else {

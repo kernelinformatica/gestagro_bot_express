@@ -9,4 +9,8 @@ npm install @whiskeysockets/baileys@7.0.0-rc.2
 
 
 ver logs:
-tail -f /varlog/gestagro_sola_bot.log
+tail -f /var/log/gestagro_sola_bot.log
+
+
+# Para ver los usuarios que usan el bot
+SELECT cuenta, nombre, telefono, ident_unico_whatsupp FROM usuarios WHERE coope = 11 AND telefono <> 0  or  ident_unico_whatsupp <> 0

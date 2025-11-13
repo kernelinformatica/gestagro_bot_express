@@ -127,8 +127,8 @@ export const verificarUsuarioValido = async (celu, coope = "0") => {
       body: JSON.stringify({ celular: celu, coope: coope }),
     });
     const data = await res.json();
-    //console.log("📡 Estado de respuesta:", res.status);
-    //console.log("📦 Respuesta de la API:", data);
+    console.log("📡 Estado de respuesta:", res.status);
+    console.log("📦 Respuesta de la API:", data);
     if (data.code !== 'OK' || data.status !== 200) {
       console.warn('⚠️ verificarUsuarioValido(): Usuario no válido o error en la API:', data);
       
@@ -383,8 +383,9 @@ export async function confirmarPedidoDeFondos(numero, numeroInterno, cuenta, tip
 
    
   } catch (error) {
-    console.log('Error al registrar el usuario:', error);
-    throw error;
+    console.log('Error al registrar el pedido de fondos', error);
+    return "❌ 😢 Ocurrio un error al registrar su pedido, intente nuevamente más tarde, si el error persiste pónga en contacto con la cooperativa.";
+
   }
 }
 

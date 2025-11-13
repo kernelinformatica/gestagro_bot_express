@@ -45,7 +45,8 @@ const mensajes = {
     sf_solicitud_exito: "✅ Su solicitud ha sido procesada con éxito:\n",
     sf_solicitud_error : `❌ Su solicitud no se pudo procesar debido a un error inesperado, inténte nuevamente más tarde.\n\nEscriba *"menu"* para volver al menú principal.`,
     sf_solicitud_condiciones: "📝 _Tenga en cuenta que las solicitudes de dinero, se tramitarán y se resolverán en un lapso máximo de 48 hs, desde el día que se realizó el pedido._",
-    sf_salida_flujo_transferencias : '✅ Has salido del menu PEDIDO DE FONDOS. Escribe *"menu"* para volver al menú principal.'
-
+    sf_salida_flujo_transferencias : '✅ Has salido del menu PEDIDO DE FONDOS. Escribe *"menu"* para volver al menú principal.',
+    // subir imagenes
+    mensaje_operacion_no_permitida : '😢 Lo siento, no estás autorizado para realizar esta operación.' ,
 }
 export default mensajes ;

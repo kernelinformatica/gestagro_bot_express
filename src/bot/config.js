@@ -5,14 +5,32 @@ export const config = {
     mensajesConLogo: "S", 
     // servicios adicionales
     pedidoDeFondosSn : "N",
+    numeroPropio : "3412178626",
     // CIENTES:
-   /* cliente : "05",  
+    /*
+
+    cliente : "20", 
+    puerto: 3007, // puerto del servidor donde corre la API 
+    clienteAlias : "COFAGU BOT",
+    clienteNombre : "Cooperativa Federal Agricola y Ganadera de Urdinarrain LTDA.",
+    clienteLogo: "/home/administrador/chatbot-gestagro/bot-urdinarrain/src/assets/logos/20.png",
+    clienteRobotImg: "/home/administrador/chatbot-gestagro/bot-urdinarrain/src/assets/robots/20.jpg",
+*/
+
+  /*  cliente : "00",  
+    puerto: 3001, 
+    clienteAlias : "GESTAGRO BOT",
+    clienteNombre : "GESTAGRO.",
+    clienteLogo: "/home/administrador/chatbot-gestagro/bot/src/assets/logos/00.png",
+    clienteRobotImg: "/home/administrador/chatbot-gestagro/bot/src/assets/robots/00.jpg",
+*/
+    cliente : "05",  
     puerto: 3005, 
     clienteAlias : "COOPAZ BOT",
     clienteNombre : "COOPERATIVA AGRICOLA DE MAXIMO PAZ LIMITADA.",
     clienteLogo: "/home/administrador/chatbot-gestagro/bot-godoy/src/assets/logos/05.png",
     clienteRobotImg: "/home/administrador/chatbot-gestagro/bot-godoy/src/assets/robots/05.jpg",
-    */
+   
    
     /*
   
@@ -24,7 +42,7 @@ export const config = {
     clienteRobotImg: "/home/administrador/chatbot-gestagro/bot-godoy/src/assets/robots/12.jpg",
 
     */
-   /*
+    /*
     cliente : "11",  
     puerto: 3001, // puerto del servidor donde corre la API
     clienteAlias : "ARA",
@@ -41,15 +59,23 @@ export const config = {
     clienteRobotImg: "/home/administrador/chatbot-gestagro/bot-sola/src/assets/robots/15.jpg",
     */
 
-    
+    /*
     cliente : "29", 
     puerto: 3003, // puerto del servidor donde corre la API 
     clienteAlias : "GOB CRESPO BOT",
     clienteNombre : "Cooperativa Agrícola de Gobernador Crespo LTDA.",
     clienteLogo: "/home/administrador/chatbot-gestagro/bot-gcrespo/src/assets/logos/29.png",
     clienteRobotImg: "/home/administrador/chatbot-gestagro/bot-gcrespo/src/assets/robots/29.jpg",
-    
-};
+    */
+    /*
+    cliente : "20", 
+    puerto: 3007, // puerto del servidor donde corre la API 
+    clienteAlias : "COFAGU BOT",
+    clienteNombre : "Cooperativa Federal Agricola y Ganadera de Urdinarrain LTDA.",
+    clienteLogo: "/home/administrador/chatbot-gestagro/bot-urdinarrain/src/assets/logos/20.png",
+    clienteRobotImg: "/home/administrador/chatbot-gestagro/bot-urdinarrain/src/assets/robots/20.jpg",
+    */
+    };
 
 export const rutas = { 
     // este path es solo para maximo paz 
@@ -64,6 +90,7 @@ export const ftpUpload = {
 };
 
 export const clientesCodigo = {
+    0: '00',
     1: '01',
     3: '03',
     5: '05',
@@ -71,8 +98,27 @@ export const clientesCodigo = {
     11: '11',
     12: '12',
     15: '15',
+    20: '20',
     29: '29',
 };
+
+export const permisosEspeciales = {
+    '05': { // Cliente COOPAZ
+      subirImagenes: [
+        '0510885',
+        '0530900',
+        
+        
+      ],
+      subirMercado: [
+        '0510885',
+        '0530900',
+      
+              ]
+    },
+    /*.....*/
+  };
+  
 
 export const info = {
     nombreEmpresa: "Gestagro",
@@ -121,10 +167,15 @@ export const coope = {
         descripcionBot: "Asistente Virtual",
         clienteNombre: "Cooperativa Agropecuaria de Godoy LTDA.",
     },
-    '12': {
+    '15': {
         nombreBot: "SOLA BOT",
         descripcionBot: "Asistente Virtual",
         clienteNombre: "Cooperativa Agropecuaria de Leon Sola LTDA.",
+    },
+    '20': {
+        nombreBot: "COFAGU BOT",
+        descripcionBot: "Asistente Virtual de COFAGU",
+        clienteNombre: "Cooperativa Federal Agricola y Ganadera de Urdinarrain LTDA",
     },
     '29': {
         nombreBot: "COOP GCRESPO BOT",

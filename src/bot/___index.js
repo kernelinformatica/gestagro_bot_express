@@ -1,6 +1,6 @@
 // 📦 Importaciones ESM
 import { makeWASocket, useMultiFileAuthState, DisconnectReason, fetchLatestBaileysVersion } from '@whiskeysockets/baileys';
-import { clientesCodigo, permisosEspeciales } from './config.js';
+import { clientesCodigo } from './config.js';
 import Boom from '@hapi/boom';
 import qrcode from 'qrcode-terminal';
 import pino from 'pino';
@@ -12,7 +12,6 @@ import userStates from './userStates.js';
 import { verificarUsuarioValido, loginRegistrarUsuario, login, loginValidarCuenta, loginEsperarRespuestaUsuario, confirmarPedidoDeFondos, traerSucursales, traerCbusPorCuenta, traerTransacciones } from '../services/apiCliente.js';
 import { esNumeroWhatsApp, getCleanId, extraerNumero } from './utils.js';
 import { manejarRegistroUsuario } from './registroUsuario.js';
-
 
 
 
@@ -43,6 +42,7 @@ import subirmercado from './commands/uploadFtp.js';
 
 */
 import { config } from './config.js';
+import { Console } from 'console';
 
 // 🧾 Logger
 const logger = pino({ level: 'debug' });
@@ -120,12 +120,14 @@ export async function startBot() {
   sock.ev.on('messages.upsert', async ({ messages, type }) => {
     try {
       const msg = messages[0];
+      const ownNumber = `${config.numeroPropio}@s.whatsapp.net`; // Configura tu número propio
+
       // Ignorar mensajes del sistema o enviados por el propio bot
-      if (!msg.message || msg.key.fromMe || msg.key.remoteJid === 'status@broadcast') {
-        console.log('⚠️ ' + msg.key.remoteJid + ', Mensaje del sistema o propio, ignorando.');
+      if (msg.key.remoteJid === ownNumber || !msg.message || msg.key.fromMe || msg.key.remoteJid === 'status@broadcast') {
+        console.warn('⚠️ ' + msg.key.remoteJid + ', Mensaje del sistema o propio, ignorando.');
         return;
       }
-
+     
 
 
       const uniqueMessageID = `${msg.key.remoteJid}-${msg.key.id}`;
@@ -141,6 +143,7 @@ export async function startBot() {
       
 
       const text = normalizeText(msg, true);
+      console.log("::::::::::::::::: TEXTO NORMALIZADO: "+text)
       const textClave = normalizeText(msg,false);
       
 
@@ -156,6 +159,9 @@ export async function startBot() {
       let cliente = 0;
       
       console.log('📨 Numero extraido: ', numero)
+      if (numero == config.numeroPropio){
+        return
+      }
       console.log('📨 Identificador interno:', numeroInterno);
       console.log('📨 JID completo:', jid);
       console.log('📨 Api Propietaria: ', config.apiPropietaria, config.cliente);
@@ -337,31 +343,19 @@ export async function startBot() {
         if (msg.message.imageMessage && config.cliente === "05") {
           console.log('📷 Mensaje con imagen detectado para cliente 05 (Maximo Paz) dentro del comando "pizarra". Procesando subida...');
           if (msg.message.imageMessage.mimetype === 'image/jpeg' || msg.message.imageMessage.mimetype === 'image/png') {
-            console.log('📷 Imagen válida image/jpeg recibida. Iniciando proceso de subida...'+cta);
-            const puedeSubir = permisosEspeciales[config.cliente].subirImagenes.includes(String(cta));
-            if (puedeSubir == true) {  
-              const puedeSubirMercado = permisosEspeciales[config.cliente].subirMercado.includes(String(cta));
-              if (puedeSubirMercado == true) {
-                await subirmercado(sock, from, text, msg, cta); // Llama al comando de subida SFTP
-                return;
-              } else {
-                await sock.sendMessage(from, { text:  "😢 Lo siento, no estás autorizado para realizar esta operación."});
-                return
-              }
-            }else{
-              await sock.sendMessage(from, { text:  "😢 Lo siento, no estás autorizado para realizar esta operación."});
-              return
-            }    
-            
+            await subirmercado(sock, from, text, msg, cta); // Llama al comando de subida SFTP
+            return;
           }
         }
 
       }
+      console.log("TEXTO RECIBIDO: "+text)
       if (!text) {
-        console.log('⚠️ No se recibió texto válido.');
+        //console.log('⚠️ No se recibió texto válido.');
         return;
       }
       if (!id) {
+        
         await sock.sendMessage(from, { text: "😢 " + mensajes.noAutorizado });
         return
       }
@@ -372,196 +366,196 @@ export async function startBot() {
 
      
       const comandosPorCliente = {
-              '05': {
-                menu,
-                'menu': menu,
-                '0': menu,
-                'hola': menu,
-                info,
-                'info': info,
-                '1': info,
-                pesos,
-                'pesos': pesos,
-                '2': pesos,
-                pesosresumen,
-                'resumen': pesosresumen,
-                '10': pesosresumen,
-                cereales: resucer,
-                '3': resucer,
-                f: fichacereal,
-                '55': fichacereal,
-                r: ficharomaneos,
-                '56': ficharomaneos,
-                pizarra,
-                '4': pizarra,
-                cotizaciones,
-                '5': cotizaciones,
-                contacto,
-                '6': contacto,
-                solicitarDinero,
-                '7': solicitarDinero,
-                salir,
-                '8': salir,
-                'salir': salir,
-                subirmercado,
-                '98': subirmercado,
-               
-              },
-              '11': {
-                menu,
-                'menu': menu,
-                '0': menu,
-                'hola': menu,
-                pesos,
-                'pesos': pesos,
-                '1': pesos,
-                pesosresumen,
-                'resumen': pesosresumen,
-                '10': pesosresumen,
-                dolar,
-                'dolar': dolar,
-                '2': dolar,
-                'dolarresumen': dolarresumen,
-                '11': dolarresumen,
-                cereales: resucer,
-                '3': resucer,
-      
-                f: fichacereal,
-                '55': fichacereal,
-      
-                r: ficharomaneos,
-                '56': ficharomaneos,
-      
-                disponible,
-                '4': disponible,
-                futuro,
-                '5': futuro,
-      
-                cotizaciones,
-                '6': cotizaciones,
-                
-                solicitarDinero,
-                '7': solicitarDinero,
-      
-      
-                contacto,
-                '8': contacto,
-      
-                salir,
-                '9': salir,
-                'salir': salir,
-                /*
-              */
-              },
-              '12':{
-                menu,
-                'menu': menu,
-                '0': menu,
-                'hola': menu,
-                pesos,
-                'pesos': pesos,
-                '1': pesos,
-                pesosresumen,
-                'resumen': pesosresumen,
-                '10': pesosresumen,
-                dolar,
-                'dolar': dolar,
-                '2': dolar,
-                'resumendolar': dolarresumen,
-                '11': dolarresumen,
-                cereales: resucer,
-                '3': resucer,
-                f: fichacereal,
-                '55': fichacereal,
-                r: ficharomaneos,
-                '56': ficharomaneos,
-                disponible,
-                '4': disponible,
-                futuro,
-                '5': futuro,
-                cotizaciones,
-                '6': cotizaciones,
-                contacto,
-                '7': contacto,
-                salir,
-                '8': salir,
-              },
-              '20':{
-                menu,
-                'menu': menu,
-                '0': menu,
-                'hola': menu,
-                pesos,
-                'pesos': pesos,
-                '1': pesos,
-                pesosresumen,
-                'resumen': pesosresumen,
-                '10': pesosresumen,
-                dolar,
-                'dolar': dolar,
-                '2': dolar,
-                'resumendolar': dolarresumen,
-                '11': dolarresumen,
-                cereales: resucer,
-                '3': resucer,
-                f: fichacereal,
-                '55': fichacereal,
-                r: ficharomaneos,
-                '56': ficharomaneos,
-                cotizaciones,
-                '4': cotizaciones,
-                contacto,
-                '5': contacto,
-                salir,
-                '6': salir,
-                
-              },
-              '29':{
-                menu,
-                'menu': menu,
-                '0': menu,
-                'hola': menu,
-                pesos,
-                'pesos': pesos,
-                '1': pesos,
-                pesosresumen,
-                'resumen': pesosresumen,
-                '10': pesosresumen,
-                dolar,
-                'dolar': dolar,
-                '2': dolar,
-                'resumendolar': dolarresumen,
-                '11': dolarresumen,
-                cereales: resucer,
-                '3': resucer,
-                f: fichacereal,
-                '55': fichacereal,
-                r: ficharomaneos,
-                '56': ficharomaneos,
-                disponible,
-                '4': disponible,
-                futuro,
-                '5': futuro,
-                cotizaciones,
-                '6': cotizaciones,
-                contacto,
-                '7': contacto,
-                salir,
-                '8': salir,
-              },
-              'default': {
-                menu,
-                'menu': menu,
-                '0': menu,
-                info,
-                'info': info,
-                '1': info,
-                pesos,
-                'pesos': pesos,
-                '2': pesos,
-              },
-      
-            };
+        '05': {
+          menu,
+          'menu': menu,
+          '0': menu,
+          'hola': menu,
+          info,
+          'info': info,
+          '1': info,
+          pesos,
+          'pesos': pesos,
+          '2': pesos,
+          pesosresumen,
+          'resumen': pesosresumen,
+          '10': pesosresumen,
+          cereales: resucer,
+          '3': resucer,
+          f: fichacereal,
+          '55': fichacereal,
+          r: ficharomaneos,
+          '56': ficharomaneos,
+          pizarra,
+          '4': pizarra,
+          cotizaciones,
+          '5': cotizaciones,
+          contacto,
+          '6': contacto,
+          solicitarDinero,
+          '7': solicitarDinero,
+          salir,
+          '8': salir,
+          'salir': salir,
+          subirmercado,
+          '98': subirmercado,
+         
+        },
+        '11': {
+          menu,
+          'menu': menu,
+          '0': menu,
+          'hola': menu,
+          pesos,
+          'pesos': pesos,
+          '1': pesos,
+          pesosresumen,
+          'resumen': pesosresumen,
+          '10': pesosresumen,
+          dolar,
+          'dolar': dolar,
+          '2': dolar,
+          'dolarresumen': dolarresumen,
+          '11': dolarresumen,
+          cereales: resucer,
+          '3': resucer,
+
+          f: fichacereal,
+          '55': fichacereal,
+
+          r: ficharomaneos,
+          '56': ficharomaneos,
+
+          disponible,
+          '4': disponible,
+          futuro,
+          '5': futuro,
+
+          cotizaciones,
+          '6': cotizaciones,
+          
+          solicitarDinero,
+          '7': solicitarDinero,
+
+
+          contacto,
+          '8': contacto,
+
+          salir,
+          '9': salir,
+          'salir': salir,
+          /*
+        */
+        },
+        '12':{
+          menu,
+          'menu': menu,
+          '0': menu,
+          'hola': menu,
+          pesos,
+          'pesos': pesos,
+          '1': pesos,
+          pesosresumen,
+          'resumen': pesosresumen,
+          '10': pesosresumen,
+          dolar,
+          'dolar': dolar,
+          '2': dolar,
+          'resumendolar': dolarresumen,
+          '11': dolarresumen,
+          cereales: resucer,
+          '3': resucer,
+          f: fichacereal,
+          '55': fichacereal,
+          r: ficharomaneos,
+          '56': ficharomaneos,
+          disponible,
+          '4': disponible,
+          futuro,
+          '5': futuro,
+          cotizaciones,
+          '6': cotizaciones,
+          contacto,
+          '7': contacto,
+          salir,
+          '8': salir,
+        },
+        '20':{
+          menu,
+          'menu': menu,
+          '0': menu,
+          'hola': menu,
+          pesos,
+          'pesos': pesos,
+          '1': pesos,
+          pesosresumen,
+          'resumen': pesosresumen,
+          '10': pesosresumen,
+          dolar,
+          'dolar': dolar,
+          '2': dolar,
+          'resumendolar': dolarresumen,
+          '11': dolarresumen,
+          cereales: resucer,
+          '3': resucer,
+          f: fichacereal,
+          '55': fichacereal,
+          r: ficharomaneos,
+          '56': ficharomaneos,
+          cotizaciones,
+          '4': cotizaciones,
+          contacto,
+          '5': contacto,
+          salir,
+          '6': salir,
+          
+        },
+        '29':{
+          menu,
+          'menu': menu,
+          '0': menu,
+          'hola': menu,
+          pesos,
+          'pesos': pesos,
+          '1': pesos,
+          pesosresumen,
+          'resumen': pesosresumen,
+          '10': pesosresumen,
+          dolar,
+          'dolar': dolar,
+          '2': dolar,
+          'resumendolar': dolarresumen,
+          '11': dolarresumen,
+          cereales: resucer,
+          '3': resucer,
+          f: fichacereal,
+          '55': fichacereal,
+          r: ficharomaneos,
+          '56': ficharomaneos,
+          disponible,
+          '4': disponible,
+          futuro,
+          '5': futuro,
+          cotizaciones,
+          '6': cotizaciones,
+          contacto,
+          '7': contacto,
+          salir,
+          '8': salir,
+        },
+        'default': {
+          menu,
+          'menu': menu,
+          '0': menu,
+          info,
+          'info': info,
+          '1': info,
+          pesos,
+          'pesos': pesos,
+          '2': pesos,
+        },
+
+      };
 
 
      
@@ -591,8 +585,6 @@ export async function startBot() {
             userState.estado === 'preguntar_sucursal' ||
             userState.estado === 'preguntar_fecha_acreditacion' ||
             userState.estado === 'confirmar_solicitud') {
-          
-          
           await handlePedidoDeFondos(sock, from, text, userState, numero, numeroInterno,cuenta);
           return;
         }
@@ -638,12 +630,13 @@ export async function startBot() {
 
 
 
-/*
+
 function normalizeText(msg, toLowerCase = true) {
+
   console.dir(msg, { depth: null }); // Para depurar la estructura del mensaje
 
   const m = msg.message;
-
+  console.log(":::::::::::::::: MENSAJE NORMALIZE TEXT: ",m)
   // Ignorar mensajes de protocolo (eliminados, modo desaparición, etc.)
   if (m?.protocolMessage) return '';
 
@@ -681,68 +674,10 @@ function normalizeText(msg, toLowerCase = true) {
   
   //return text.trim().toLowerCase();
 }
-*/
 
 
-function normalizeText(msg, toLowerCase = true) {
-  console.dir(msg, { depth: null }); // Para depurar la estructura del mensaje
 
-  let m = msg.message;
 
-  // Manejar mensajes anidados en `ephemeralMessage`
-  if (m?.ephemeralMessage?.message) {
-    m = m.ephemeralMessage.message;
-  }
-
-  // Ignorar mensajes de protocolo (eliminados, modo desaparición, etc.)
-  if (m?.protocolMessage) {
-    console.log('⚠️ Mensaje de protocolo detectado, ignorando.');
-    return '';
-  }
-
-  // Ignorar reacciones (pueden procesarse aparte si es necesario)
-  if (m?.reactionMessage) {
-    console.log('⚠️ Mensaje de reacción detectado, ignorando.');
-    return '';
-  }
-
-  // Ignorar mensajes de stickers (sin texto)
-  if (m?.stickerMessage) {
-    console.log('⚠️ Mensaje de sticker detectado, ignorando.');
-    return '';
-  }
-
-  // Ignorar audios sin transcripción
-  if (m?.audioMessage && !m.audioMessage.caption) {
-    console.log('⚠️ Mensaje de audio sin transcripción detectado, ignorando.');
-    return '';
-  }
-
-  // Extraer texto de múltiples tipos de mensajes
-  const text =
-    m?.extendedTextMessage?.text ?? // Mensajes con texto extendido
-    m?.conversation ?? // Mensajes de texto simples
-    m?.imageMessage?.caption ?? // Texto en imágenes
-    m?.videoMessage?.caption ?? // Texto en videos
-    m?.documentMessage?.caption ?? // Texto en documentos
-    m?.buttonsResponseMessage?.selectedButtonId ?? // Respuesta a botones
-    m?.listResponseMessage?.title ?? // Respuesta a listas
-    m?.templateButtonReplyMessage?.selectedId ?? // Respuesta a botones de plantilla
-    m?.pollUpdateMessage?.name ?? // Nombre de encuestas
-    m?.audioMessage?.caption ?? // Texto en audios
-    m?.contactMessage?.displayName ?? // Nombre en contactos
-    m?.locationMessage?.name ?? // Nombre en ubicaciones
-    '';
-
-  // Si no se encontró texto, registrar el problema
-  if (!text) {
-    console.log('⚠️ No se encontró texto en el mensaje. Campos disponibles:', Object.keys(m));
-    return '';
-  }
-
-  // Normalizar el texto
-  return toLowerCase ? text.trim().toLowerCase() : text.trim();
-}
 
 // Detectar comando
 function detectarComando(texto, comandosValidos) {
@@ -1211,7 +1146,6 @@ async function handlePedidoDeFondos(sock, from, text, userState, numeroCelu, num
 
 
 async function cargarMensajesCliente(coopeId) {
-  console.log("cargarMensajesCliente("+coopeId+")");
   const codigo = clientesCodigo[coopeId];
   console.log("cargarMensajesCliente("+coopeId+") -> "+codigo);
   if (!codigo) return mensajes;
