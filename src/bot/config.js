@@ -107,12 +107,13 @@ export const permisosEspeciales = {
       subirImagenes: [
         '0510885',
         '0530900',
-        
+        '0530059'
         
       ],
       subirMercado: [
         '0510885',
         '0530900',
+        '0530059'
       
               ]
     },
